@@ -8,6 +8,8 @@ import {
   Youtube,
   ClipboardList,
   Cog,
+  FileText,
+  Award,
 } from "lucide-react";
 import { logout } from "../../api/auth/authService";
 
@@ -82,6 +84,20 @@ export const BossLayout: React.FC<BossLayoutProps> = ({ children }) => {
       icon: Cog,
       path: "/admin/exam-settings",
       active: location.pathname === "/admin/exam-settings",
+    },
+    {
+      id: "text-to-pdf",
+      label: "テキストPDF生成",
+      icon: FileText,
+      path: "/admin/text-to-pdf",
+      active: location.pathname === "/admin/text-to-pdf",
+    },
+    {
+      id: "certificate",
+      label: "修了証生成",
+      icon: Award,
+      path: "/admin/certificate-generator",
+      active: location.pathname === "/admin/certificate-generator",
     },
   ];
 

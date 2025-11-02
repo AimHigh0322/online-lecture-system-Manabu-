@@ -1,6 +1,6 @@
-import React, { useState, type FormEvent, useEffect } from "react";
+import React, { useState, type FormEvent, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Mail, Lock, User, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, User, ArrowLeft, Eye, EyeOff, Image as ImageIcon, X } from "lucide-react";
 import { useData } from "../../context/DataContext";
 import { useToast } from "../../hooks/useToast";
 import { getFaceDescriptorFromImage, loadModels } from "../../lib/face";
@@ -26,6 +26,9 @@ export const Register: React.FC<RegisterProps> = ({ onRegisterSuccess }) => {
 
   // face descriptor states
   const [descriptor, setDescriptor] = useState<number[] | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // load face-api models once
   useEffect(() => {
@@ -129,6 +132,57 @@ export const Register: React.FC<RegisterProps> = ({ onRegisterSuccess }) => {
 
   const handleGoBack = () => {
     navigate("/");
+  };
+
+  const handleFileSelect = async (file: File) => {
+    setError(null);
+    setSelectedFile(file);
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Process face descriptor
+    const desc = await getFaceDescriptorFromImage(file);
+    if (desc) {
+      setDescriptor(Array.from(desc));
+    } else {
+      setError("顔が検出できませんでした。別の写真をお試しください。");
+      setSelectedFile(null);
+      setImagePreview(null);
+      setDescriptor(null);
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await handleFileSelect(file);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setImagePreview(null);
+    setDescriptor(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith("image/")) {
+      await handleFileSelect(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
   };
 
   return (
@@ -286,22 +340,54 @@ export const Register: React.FC<RegisterProps> = ({ onRegisterSuccess }) => {
                     <label className="block mb-2 text-sm font-medium text-gray-700">
                       顔写真をアップロード
                     </label>
+                    
+                    {/* Hidden file input */}
                     <input
+                      ref={fileInputRef}
                       type="file"
                       accept="image/*"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const desc = await getFaceDescriptorFromImage(file);
-                          if (desc) {
-                            setDescriptor(Array.from(desc)); // Float32Array → normal array
-                          } else {
-                            setError("顔が検出できませんでした。別の写真をお試しください。");
-                          }
-                        }
-                      }}
-                      className="block w-full text-sm text-gray-900 border border-orange-300 rounded-lg cursor-pointer bg-orange-50 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      onChange={handleFileChange}
+                      className="hidden"
                     />
+
+                    {imagePreview ? (
+                      /* Compact preview */
+                      <div 
+                        onDrop={handleDrop}
+                        onDragOver={handleDragOver}
+                        className="flex items-center gap-2 py-2 px-3 border-2 border-orange-200 rounded-xl bg-gray-50"
+                      >
+                        <div className="w-8 h-8 rounded overflow-hidden border border-orange-200 flex-shrink-0">
+                          <img
+                            src={imagePreview}
+                            alt="プレビュー"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <span className="text-xs text-gray-600 flex-1 truncate">
+                          {selectedFile?.name}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleRemoveFile}
+                          className="flex-shrink-0 text-gray-400 hover:text-red-600 transition-colors p-1"
+                          aria-label="削除"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      /* Minimal upload area */
+                      <div
+                        onDrop={handleDrop}
+                        onDragOver={handleDragOver}
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex items-center gap-2 py-2 px-3 border-2 border-orange-200 rounded-xl text-gray-600 cursor-pointer hover:border-orange-400 hover:bg-orange-50 transition-colors"
+                      >
+                        <ImageIcon className="h-4 w-4 text-orange-400 flex-shrink-0" />
+                        <span className="text-sm">写真を選択</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Error */}

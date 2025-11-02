@@ -14,6 +14,8 @@ import ExamQuestionManagement from "./app/admin/ExamQuestionManagement";
 import ExamQuestionForm from "./app/admin/ExamQuestionForm";
 import ExamManagement from "./app/admin/ExamManagement";
 import ExamSettings from "./app/admin/ExamSettings";
+import TextToPdf from "./app/admin/TextToPdf";
+import CertificateGenerator from "./app/admin/CertificateGenerator";
 import ExamRoom from "./app/student/ExamRoom";
 import ExamTaking from "./app/student/ExamTaking";
 import ExamResults from "./app/student/ExamResults";
@@ -146,6 +148,26 @@ function App() {
             element={
               <AdminRoute>
                 <ExamSettings />
+              </AdminRoute>
+            }
+          />
+
+          {/* Text to PDF Routes */}
+          <Route
+            path="/admin/text-to-pdf"
+            element={
+              <AdminRoute>
+                <TextToPdf />
+              </AdminRoute>
+            }
+          />
+
+          {/* Certificate Generator Routes */}
+          <Route
+            path="/admin/certificate-generator"
+            element={
+              <AdminRoute>
+                <CertificateGenerator />
               </AdminRoute>
             }
           />
