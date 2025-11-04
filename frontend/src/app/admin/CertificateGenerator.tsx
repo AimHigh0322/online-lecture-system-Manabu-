@@ -1,6 +1,7 @@
 import React, { useState, useRef } from "react";
 import { FileDown } from "lucide-react";
 import { AdminLayout } from "../../components/layout";
+import { Select } from "../../components/atom/Select";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
@@ -166,7 +167,7 @@ export const CertificateGenerator: React.FC = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="max-w-2xl mx-auto">
           {/* Input Form */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-lg font-seminormal text-gray-900 mb-4">
@@ -216,16 +217,16 @@ export const CertificateGenerator: React.FC = () => {
                 >
                   性別 <span className="text-red-500">*</span>
                 </label>
-                <select
-                  id="gender"
+                <Select
                   value={formData.gender}
-                  onChange={(e) => handleInputChange("gender", e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                >
-                  <option value="">選択してください</option>
-                  <option value="男">男</option>
-                  <option value="女">女</option>
-                </select>
+                  onChange={(value) => handleInputChange("gender", value)}
+                  options={[
+                    { value: "男", label: "男" },
+                    { value: "女", label: "女" },
+                  ]}
+                  placeholder="選択してください"
+                  theme="orange"
+                />
               </div>
 
               <div>
@@ -300,299 +301,298 @@ export const CertificateGenerator: React.FC = () => {
             </div>
           </div>
 
-          {/* Certificate Preview */}
-          <div className="bg-gray-100 rounded-lg p-6 overflow-auto max-h-[calc(100vh-200px)]">
-            <h2 className="text-lg font-seminormal text-gray-900 mb-4">
-              プレビュー
-            </h2>
+          {/* Hidden Certificate Element for PDF Generation */}
+          <div
+            style={{
+              position: "absolute",
+              left: "-9999px",
+              top: "-9999px",
+              visibility: "hidden",
+            }}
+          >
             <div
-              className="bg-white p-4 shadow-lg inline-block"
-              style={{ width: "182mm" }}
+              ref={certificateRef}
+              className="certificate-container"
+              style={{
+                width: "182mm",
+                minHeight: "257mm",
+                position: "relative",
+                backgroundColor: "#ffffff",
+                backgroundImage: "url('/img/certificate.png')",
+                backgroundSize: "100% 100%",
+                backgroundPosition: "top left",
+                backgroundRepeat: "no-repeat",
+                fontFamily:
+                  "'MS PGothic', 'Hiragino Kaku Gothic ProN', sans-serif",
+              }}
             >
+              {/* Content Area */}
               <div
-                ref={certificateRef}
-                className="certificate-container"
                 style={{
-                  width: "182mm",
-                  minHeight: "257mm",
+                  padding: "30mm",
                   position: "relative",
-                  backgroundColor: "#ffffff",
-                  backgroundImage: "url('/img/certificate.png')",
-                  backgroundSize: "100% 100%",
-                  backgroundPosition: "top left",
-                  backgroundRepeat: "no-repeat",
-                  fontFamily:
-                    "'MS PGothic', 'Hiragino Kaku Gothic ProN', sans-serif",
+                  zIndex: 1,
                 }}
               >
-                {/* Content Area */}
+                {/* Certificate Number */}
                 <div
                   style={{
-                    padding: "30mm",
-                    position: "relative",
-                    zIndex: 1,
+                    padding: "50px 25px 0 0",
+                    textAlign: "right",
+                    fontSize: "18px",
+                    marginBottom: "30px",
+                    fontWeight: "normal",
                   }}
                 >
-                  {/* Certificate Number */}
+                  第{formData.certificateNumber || "______"}号
+                </div>
+
+                {/* Title */}
+                <div
+                  style={{
+                    textAlign: "center",
+                    fontSize: "42px",
+                    fontWeight: "normal",
+                    marginBottom: "35px",
+                    letterSpacing: "3px",
+                  }}
+                >
+                  修了証書
+                </div>
+
+                {/* Information Table */}
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    border: "1px solid #000",
+                    marginBottom: "10px",
+                    tableLayout: "fixed",
+                  }}
+                >
+                  <thead>
+                    <tr style={{ verticalAlign: "middle" }}>
+                      <th
+                        style={{
+                          border: "1px solid #000",
+                          padding: "12px 8px",
+                          backgroundColor: "#f5f5f5",
+                          fontSize: "18px",
+                          fontWeight: "normal",
+                          width: "25%",
+                          textAlign: "center",
+                          verticalAlign: "middle",
+                          height: "100%",
+                          display: "table-cell",
+                        }}
+                      >
+                        受講者名
+                      </th>
+                      <th
+                        style={{
+                          border: "1px solid #000",
+                          padding: "12px 8px",
+                          backgroundColor: "#f5f5f5",
+                          fontSize: "18px",
+                          fontWeight: "normal",
+                          width: "15%",
+                          textAlign: "center",
+                          verticalAlign: "middle",
+                          height: "100%",
+                          display: "table-cell",
+                        }}
+                      >
+                        性別
+                      </th>
+                      <th
+                        style={{
+                          border: "1px solid #000",
+                          padding: "12px 8px",
+                          backgroundColor: "#f5f5f5",
+                          fontSize: "18px",
+                          fontWeight: "normal",
+                          width: "25%",
+                          textAlign: "center",
+                          verticalAlign: "middle",
+                          height: "100%",
+                          display: "table-cell",
+                        }}
+                      >
+                        {formData.startDate
+                          ? formatDateForTable(formData.startDate)
+                          : "受講開始日"}
+                      </th>
+                      <th
+                        style={{
+                          border: "1px solid #000",
+                          padding: "12px 8px",
+                          backgroundColor: "#f5f5f5",
+                          fontSize: "18px",
+                          fontWeight: "normal",
+                          width: "35%",
+                          textAlign: "center",
+                          verticalAlign: "middle",
+                          height: "100%",
+                          display: "table-cell",
+                        }}
+                      >
+                        受講時間数
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style={{ verticalAlign: "middle" }}>
+                      <td
+                        style={{
+                          border: "1px solid #000",
+                          padding: "12px 8px",
+                          fontSize: "18px",
+                          textAlign: "center",
+                          verticalAlign: "middle",
+                          fontWeight: "500",
+                          height: "100%",
+                          display: "table-cell",
+                        }}
+                      >
+                        {formData.name || "________________"}
+                      </td>
+                      <td
+                        style={{
+                          border: "1px solid #000",
+                          padding: "12px 8px",
+                          fontSize: "18px",
+                          textAlign: "center",
+                          verticalAlign: "middle",
+                          fontWeight: "500",
+                          height: "100%",
+                          display: "table-cell",
+                        }}
+                      >
+                        {formData.gender || "____"}
+                      </td>
+                      <td
+                        style={{
+                          border: "1px solid #000",
+                          padding: "12px 8px",
+                          fontSize: "18px",
+                          textAlign: "center",
+                          verticalAlign: "middle",
+                          fontWeight: "500",
+                          height: "100%",
+                          display: "table-cell",
+                        }}
+                      >
+                        ミャンマー
+                      </td>
+                      <td
+                        style={{
+                          border: "1px solid #000",
+                          padding: "12px 8px",
+                          fontSize: "18px",
+                          textAlign: "center",
+                          verticalAlign: "middle",
+                          fontWeight: "500",
+                          height: "100%",
+                          display: "table-cell",
+                        }}
+                      >
+                        174時間
+                      </td>
+                    </tr>
+                    <tr style={{ verticalAlign: "middle" }}>
+                      <td
+                        colSpan={4}
+                        style={{
+                          border: "1px solid #000",
+                          padding: "12px 8px",
+                          backgroundColor: "#f5f5f5",
+                          fontSize: "18px",
+                          fontWeight: "normal",
+                          textAlign: "center",
+                          verticalAlign: "middle",
+                          height: "100%",
+                          display: "table-cell",
+                        }}
+                      >
+                        受講期間
+                      </td>
+                    </tr>
+                    <tr style={{ verticalAlign: "middle" }}>
+                      <td
+                        colSpan={4}
+                        style={{
+                          border: "1px solid #000",
+                          padding: "12px 8px",
+                          fontSize: "18px",
+                          textAlign: "center",
+                          verticalAlign: "middle",
+                          height: "100%",
+                          display: "table-cell",
+                        }}
+                      >
+                        {formData.startDate && formData.endDate
+                          ? `${formatDateForDisplay(
+                              formData.startDate
+                            )} - ${formatDateForDisplay(formData.endDate)}`
+                          : "________________"}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                {/* Certificate Statement */}
+                <div
+                  style={{
+                    fontSize: "20px",
+                    lineHeight: "2.2",
+                    textAlign: "left",
+                    marginTop: "10px",
+                    marginBottom: "40px",
+                    fontWeight: "normal",
+                  }}
+                >
+                  <div>上記の者は本校で規定の講習を</div>
+                  <div>修了したことを証する</div>
+                </div>
+
+                {/* Issuing Information */}
+                <div
+                  style={{
+                    textAlign: "right",
+                    marginTop: "0",
+                    marginRight: "0",
+                  }}
+                >
                   <div
                     style={{
-                      padding: "50px 25px 0 0",
-                      textAlign: "right",
+                      fontSize: "16px",
+                      marginBottom: "8px",
+                      fontWeight: "500",
+                    }}
+                  >
+                    {formData.issueDate
+                      ? formatDateForDisplay(formData.issueDate)
+                      : "発行日"}
+                  </div>
+                  <div
+                    style={{
                       fontSize: "18px",
-                      marginBottom: "30px",
                       fontWeight: "normal",
+                      marginBottom: "6px",
                     }}
                   >
-                    第{formData.certificateNumber || "______"}号
+                    学ぼう国際研修センター
                   </div>
-
-                  {/* Title */}
-                  <div
-                    style={{
-                      textAlign: "center",
-                      fontSize: "42px",
-                      fontWeight: "normal",
-                      marginBottom: "35px",
-                      letterSpacing: "3px",
-                    }}
-                  >
-                    修了証書
-                  </div>
-
-                  {/* Information Table */}
-                  <table
-                    style={{
-                      width: "100%",
-                      borderCollapse: "collapse",
-                      border: "1px solid #000",
-                      marginBottom: "10px",
-                      tableLayout: "fixed",
-                    }}
-                  >
-                    <thead>
-                      <tr style={{ verticalAlign: "middle" }}>
-                        <th
-                          style={{
-                            border: "1px solid #000",
-                            padding: "12px 8px",
-                            backgroundColor: "#f5f5f5",
-                            fontSize: "18px",
-                            fontWeight: "normal",
-                            width: "25%",
-                            textAlign: "center",
-                            verticalAlign: "middle",
-                            height: "100%",
-                            display: "table-cell",
-                          }}
-                        >
-                          受講者名
-                        </th>
-                        <th
-                          style={{
-                            border: "1px solid #000",
-                            padding: "12px 8px",
-                            backgroundColor: "#f5f5f5",
-                            fontSize: "18px",
-                            fontWeight: "normal",
-                            width: "15%",
-                            textAlign: "center",
-                            verticalAlign: "middle",
-                            height: "100%",
-                            display: "table-cell",
-                          }}
-                        >
-                          性別
-                        </th>
-                        <th
-                          style={{
-                            border: "1px solid #000",
-                            padding: "12px 8px",
-                            backgroundColor: "#f5f5f5",
-                            fontSize: "18px",
-                            fontWeight: "normal",
-                            width: "25%",
-                            textAlign: "center",
-                            verticalAlign: "middle",
-                            height: "100%",
-                            display: "table-cell",
-                          }}
-                        >
-                          {formData.startDate
-                            ? formatDateForTable(formData.startDate)
-                            : "受講開始日"}
-                        </th>
-                        <th
-                          style={{
-                            border: "1px solid #000",
-                            padding: "12px 8px",
-                            backgroundColor: "#f5f5f5",
-                            fontSize: "18px",
-                            fontWeight: "normal",
-                            width: "35%",
-                            textAlign: "center",
-                            verticalAlign: "middle",
-                            height: "100%",
-                            display: "table-cell",
-                          }}
-                        >
-                          受講時間数
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr style={{ verticalAlign: "middle" }}>
-                        <td
-                          style={{
-                            border: "1px solid #000",
-                            padding: "12px 8px",
-                            fontSize: "18px",
-                            textAlign: "center",
-                            verticalAlign: "middle",
-                            fontWeight: "500",
-                            height: "100%",
-                            display: "table-cell",
-                          }}
-                        >
-                          {formData.name || "________________"}
-                        </td>
-                        <td
-                          style={{
-                            border: "1px solid #000",
-                            padding: "12px 8px",
-                            fontSize: "18px",
-                            textAlign: "center",
-                            verticalAlign: "middle",
-                            fontWeight: "500",
-                            height: "100%",
-                            display: "table-cell",
-                          }}
-                        >
-                          {formData.gender || "____"}
-                        </td>
-                        <td
-                          style={{
-                            border: "1px solid #000",
-                            padding: "12px 8px",
-                            fontSize: "18px",
-                            textAlign: "center",
-                            verticalAlign: "middle",
-                            fontWeight: "500",
-                            height: "100%",
-                            display: "table-cell",
-                          }}
-                        >
-                          ミャンマー
-                        </td>
-                        <td
-                          style={{
-                            border: "1px solid #000",
-                            padding: "12px 8px",
-                            fontSize: "18px",
-                            textAlign: "center",
-                            verticalAlign: "middle",
-                            fontWeight: "500",
-                            height: "100%",
-                            display: "table-cell",
-                          }}
-                        >
-                          174時間
-                        </td>
-                      </tr>
-                      <tr style={{ verticalAlign: "middle" }}>
-                        <td
-                          colSpan={4}
-                          style={{
-                            border: "1px solid #000",
-                            padding: "12px 8px",
-                            backgroundColor: "#f5f5f5",
-                            fontSize: "18px",
-                            fontWeight: "normal",
-                            textAlign: "center",
-                            verticalAlign: "middle",
-                            height: "100%",
-                            display: "table-cell",
-                          }}
-                        >
-                          受講期間
-                        </td>
-                      </tr>
-                      <tr style={{ verticalAlign: "middle" }}>
-                        <td
-                          colSpan={4}
-                          style={{
-                            border: "1px solid #000",
-                            padding: "12px 8px",
-                            fontSize: "18px",
-                            textAlign: "center",
-                            verticalAlign: "middle",
-                            height: "100%",
-                            display: "table-cell",
-                          }}
-                        >
-                          {formData.startDate && formData.endDate
-                            ? `${formatDateForDisplay(
-                                formData.startDate
-                              )} - ${formatDateForDisplay(formData.endDate)}`
-                            : "________________"}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-
-                  {/* Certificate Statement */}
-                  <div
-                    style={{
-                      fontSize: "20px",
-                      lineHeight: "2.2",
-                      textAlign: "left",
-                      marginTop: "10px",
-                      marginBottom: "40px",
-                      fontWeight: "normal",
-                    }}
-                  >
-                    <div>上記の者は本校で規定の講習を</div>
-                    <div>修了したことを証する</div>
-                  </div>
-
-                  {/* Issuing Information */}
                   <div
                     style={{
                       textAlign: "right",
-                      marginTop: "0",
-                      marginRight: "0",
+                      paddingRight: "70px",
+                      fontSize: "16px",
+                      marginBottom: "10px",
+                      fontWeight: "normal",
                     }}
                   >
-                    <div
-                      style={{
-                        fontSize: "16px",
-                        marginBottom: "8px",
-                        fontWeight: "500",
-                      }}
-                    >
-                      {formData.issueDate
-                        ? formatDateForDisplay(formData.issueDate)
-                        : "発行日"}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: "18px",
-                        fontWeight: "normal",
-                        marginBottom: "6px",
-                      }}
-                    >
-                      学ぼう国際研修センター
-                    </div>
-                    <div
-                      style={{
-                        textAlign: "right",
-                        paddingRight: "70px",
-                        fontSize: "16px",
-                        marginBottom: "10px",
-                        fontWeight: "normal",
-                      }}
-                    >
-                      学院長&nbsp;&nbsp;中野&nbsp;&nbsp;学
-                    </div>
+                    学院長&nbsp;&nbsp;中野&nbsp;&nbsp;学
                   </div>
                 </div>
               </div>

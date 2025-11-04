@@ -8,8 +8,8 @@ import {
   Youtube,
   ClipboardList,
   Cog,
-  FileText,
   Award,
+  FilePlus,
 } from "lucide-react";
 import { logout } from "../../api/auth/authService";
 
@@ -72,6 +72,13 @@ export const BossLayout: React.FC<BossLayoutProps> = ({ children }) => {
       active: location.pathname === "/material-upload",
     },
     {
+      id: "create-exam-question",
+      label: "試験問題作成",
+      icon: FilePlus,
+      path: "/admin/question-management/create",
+      active: location.pathname === "/admin/question-management/create",
+    },
+    {
       id: "exams",
       label: "試験管理",
       icon: ClipboardList,
@@ -84,13 +91,6 @@ export const BossLayout: React.FC<BossLayoutProps> = ({ children }) => {
       icon: Cog,
       path: "/admin/exam-settings",
       active: location.pathname === "/admin/exam-settings",
-    },
-    {
-      id: "text-to-pdf",
-      label: "テキストPDF生成",
-      icon: FileText,
-      path: "/admin/text-to-pdf",
-      active: location.pathname === "/admin/text-to-pdf",
     },
     {
       id: "certificate",

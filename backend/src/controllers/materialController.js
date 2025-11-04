@@ -59,6 +59,39 @@ const upload = multer({
   },
 });
 
+// Configure multer for PDF uploads
+const pdfStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = path.join(__dirname, "../../public/uploads/pdfs");
+    fs
+      .mkdir(uploadPath, { recursive: true })
+      .then(() => cb(null, uploadPath))
+      .catch((err) => cb(err, null));
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const fileExtension = path.extname(file.originalname);
+    const fileName = `pdf_${uniqueSuffix}${fileExtension}`;
+    cb(null, fileName);
+  },
+});
+
+const uploadPdf = multer({
+  storage: pdfStorage,
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === "application/pdf") {
+      cb(null, true);
+    } else {
+      cb(new Error("Only PDF files are allowed"), false);
+    }
+  },
+});
+
+// Document uploads removed (PDF only)
+
 // Get all materials
 const getAllMaterials = async (req, res) => {
   try {
@@ -92,6 +125,8 @@ const getAllMaterials = async (req, res) => {
     });
   }
 };
+
+// Document upload handler removed (PDF only)
 
 // Get material by ID
 const getMaterialById = async (req, res) => {
@@ -129,7 +164,7 @@ const uploadVideoAndCreateMaterial = async (req, res) => {
       });
     }
 
-    const { title, description, courseId, courseName, tags, uploadedBy } =
+    const { title, description, courseId, courseName, uploadedBy } =
       req.body;
 
     // Validate required fields
@@ -164,21 +199,9 @@ const uploadVideoAndCreateMaterial = async (req, res) => {
     // Create video URL path
     const videoUrl = `/uploads/videos/${req.file.filename}`;
 
-    // Parse tags if provided
-    let parsedTags = [];
-    if (tags) {
-      try {
-        parsedTags = JSON.parse(tags);
-      } catch (e) {
-        parsedTags = tags
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter((tag) => tag);
-      }
-    }
-
     // Create material document
     const materialData = {
+      type: "video",
       title: title.trim(),
       description: description.trim(),
       courseId,
@@ -186,7 +209,6 @@ const uploadVideoAndCreateMaterial = async (req, res) => {
       videoUrl,
       videoFileName: req.file.originalname,
       videoSize: req.file.size,
-      tags: parsedTags,
       uploadedBy,
     };
 
@@ -209,6 +231,76 @@ const uploadVideoAndCreateMaterial = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "教材のアップロードに失敗しました",
+      error: error.message,
+    });
+  }
+};
+
+// Upload PDF and create material
+const uploadPdfAndCreateMaterial = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "PDFファイルが選択されていません",
+      });
+    }
+
+    const { title, description, courseId, courseName, uploadedBy } = req.body;
+
+    if (!title || !description || !courseId || !courseName || !uploadedBy) {
+      if (req.file) {
+        await fs.unlink(req.file.path).catch(console.error);
+      }
+      return res.status(400).json({
+        success: false,
+        message: "必須フィールドが不足しています",
+      });
+    }
+
+    const existingMaterial = await Material.findOne({
+      title: title.trim(),
+      courseId: courseId,
+    });
+    if (existingMaterial) {
+      await fs.unlink(req.file.path).catch(console.error);
+      return res.status(409).json({
+        success: false,
+        message: "このコース内で同じタイトルの教材が既に存在します。",
+        duplicateTitle: title.trim(),
+      });
+    }
+
+    const pdfUrl = `/uploads/pdfs/${req.file.filename}`;
+
+    const materialData = {
+      type: "pdf",
+      title: title.trim(),
+      description: description.trim(),
+      courseId,
+      courseName: courseName.trim(),
+      pdfUrl,
+      pdfFileName: req.file.originalname,
+      pdfSize: req.file.size,
+      uploadedBy,
+    };
+
+    const material = new Material(materialData);
+    await material.save();
+
+    res.status(201).json({
+      success: true,
+      message: "PDF教材が正常にアップロードされました",
+      material,
+    });
+  } catch (error) {
+    console.error("❌ Error uploading pdf and creating material:", error);
+    if (req.file) {
+      await fs.unlink(req.file.path).catch(console.error);
+    }
+    res.status(500).json({
+      success: false,
+      message: "PDF教材のアップロードに失敗しました",
       error: error.message,
     });
   }
@@ -315,12 +407,32 @@ const deleteMaterial = async (req, res) => {
       });
     }
 
-    // Delete the video file
-    const videoPath = path.join(__dirname, "../../public", material.videoUrl);
-    try {
-      await fs.unlink(videoPath);
-    } catch (fileError) {
-      console.warn("⚠️ Could not delete video file:", fileError.message);
+    // Delete the file depending on type
+    if (material.type === "video" && material.videoUrl) {
+      const videoPath = path.join(
+        __dirname,
+        "../../public",
+        material.videoUrl
+      );
+      try {
+        await fs.unlink(videoPath);
+      } catch (fileError) {
+        console.warn("⚠️ Could not delete video file:", fileError.message);
+      }
+    } else if (material.type === "pdf" && material.pdfUrl) {
+      const pdfPath = path.join(__dirname, "../../public", material.pdfUrl);
+      try {
+        await fs.unlink(pdfPath);
+      } catch (fileError) {
+        console.warn("⚠️ Could not delete pdf file:", fileError.message);
+      }
+    } else if (material.type === "document" && material.docUrl) {
+      const docPath = path.join(__dirname, "../../public", material.docUrl);
+      try {
+        await fs.unlink(docPath);
+      } catch (fileError) {
+        console.warn("⚠️ Could not delete document file:", fileError.message);
+      }
     }
 
     // Remove this material's progress from all courses in the same courseId
@@ -330,6 +442,12 @@ const deleteMaterial = async (req, res) => {
         {
           $pull: {
             lectureProgress: {
+              materialName: material.title,
+            },
+            videoProgress: {
+              materialName: material.title,
+            },
+            documentProgress: {
               materialName: material.title,
             },
           },
@@ -364,8 +482,10 @@ module.exports = {
   getAllMaterials,
   getMaterialById,
   uploadVideoAndCreateMaterial,
+  uploadPdfAndCreateMaterial,
   updateMaterial,
   deleteMaterial,
   checkTitleExists,
-  upload, // Export multer upload middleware
+  upload, // video upload middleware
+  uploadPdf, // pdf upload middleware
 };

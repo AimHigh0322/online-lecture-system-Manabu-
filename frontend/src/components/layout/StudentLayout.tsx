@@ -8,9 +8,8 @@ import {
   Lock,
   Home,
   FileText,
-  Building,
-  Mail,
   Edit,
+  Mail,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { logout, getAuthToken } from "../../api/auth/authService";
@@ -176,10 +175,6 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children }) => {
                 <Home className="w-4 h-4 text-gray-400" />
                 <span>HOME</span>
               </button>
-              <button className="flex items-center space-x-2 text-gray-800 hover:text-orange-500 font-medium transition-colors cursor-pointer text-sm">
-                <BookOpen className="w-4 h-4 text-gray-400" />
-                <span>選ばれる理由</span>
-              </button>
               <button
                 className={`flex items-center space-x-2 font-medium transition-colors cursor-pointer text-sm ${
                   location.pathname === "/courses"
@@ -203,11 +198,14 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children }) => {
                 <Edit className="w-4 h-4 text-gray-400" />
                 <span>試験ルーム</span>
               </button>
-              <button className="flex items-center space-x-2 text-gray-800 hover:text-orange-500 font-medium transition-colors cursor-pointer text-sm">
-                <Building className="w-4 h-4 text-gray-400" />
-                <span>施設紹介</span>
-              </button>
-              <button className="flex items-center space-x-2 text-gray-800 hover:text-orange-500 font-medium transition-colors cursor-pointer text-sm">
+              <button
+                className={`flex items-center space-x-2 font-medium transition-colors cursor-pointer text-sm ${
+                  location.pathname === "/contact"
+                    ? "text-orange-500"
+                    : "text-gray-800 hover:text-orange-500"
+                }`}
+                onClick={() => navigate("/contact")}
+              >
                 <Mail className="w-4 h-4 text-gray-400" />
                 <span>お問い合わせ</span>
               </button>

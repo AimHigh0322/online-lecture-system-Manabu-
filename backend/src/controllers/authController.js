@@ -66,7 +66,6 @@ const registerUser = async (req, res) => {
     // Create profile with faceDescriptor
     const newProfile = new Profile({
       userId: newUser._id.toString(),
-      displayName: username,
       faceDescriptor: faceDescriptor, // 👈 store descriptor here
     });
 

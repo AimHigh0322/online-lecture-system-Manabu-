@@ -7,8 +7,9 @@ interface Material {
   description: string;
   courseId: string;
   courseName: string;
-  tags?: string | number | null;
-  videoUrl: string;
+  type?: "video" | "pdf";
+  videoUrl?: string;
+  pdfUrl?: string;
   uploadedBy: string;
   createdAt: string;
   updatedAt: string;
@@ -21,7 +22,6 @@ interface MaterialFormData {
   description: string;
   courseId: string;
   courseName: string;
-  tags: string;
 }
 
 interface MaterialErrors {
@@ -58,7 +58,6 @@ export const EditMaterialModal: React.FC<EditMaterialModalProps> = ({
     description: "",
     courseId: "",
     courseName: "",
-    tags: "",
   });
   const [errors, setErrors] = useState<MaterialErrors>({});
   const [isUploading, setIsUploading] = useState(false);
@@ -72,7 +71,6 @@ export const EditMaterialModal: React.FC<EditMaterialModalProps> = ({
         description: material.description,
         courseId: material.courseId,
         courseName: material.courseName,
-        tags: typeof material.tags === "string" ? material.tags : "",
       });
       setErrors({});
     }
@@ -147,7 +145,6 @@ export const EditMaterialModal: React.FC<EditMaterialModalProps> = ({
         description: formData.description.trim(),
         courseId: formData.courseId,
         courseName: formData.courseName,
-        tags: formData.tags,
       };
 
       await onUpdate(updateData);
@@ -161,7 +158,6 @@ export const EditMaterialModal: React.FC<EditMaterialModalProps> = ({
         description: "",
         courseId: "",
         courseName: "",
-        tags: "",
       });
       setErrors({});
       onClose();
@@ -258,20 +254,7 @@ export const EditMaterialModal: React.FC<EditMaterialModalProps> = ({
               </select>
             </div>
 
-            {/* Tags */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                タグ
-              </label>
-              <input
-                type="text"
-                name="tags"
-                value={formData.tags}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                placeholder="タグをカンマ区切りで入力 (例: 基礎, 文法, 会話)"
-              />
-            </div>
+            {/* Tags removed */}
           </div>
 
           {/* Upload Progress */}

@@ -1,5 +1,6 @@
 const path = require("path");
 const fs = require("fs");
+const bcrypt = require("bcryptjs");
 const User = require("../model/User");
 const Profile = require("../model/Profile");
 const Course = require("../model/Course");
@@ -26,7 +27,7 @@ const getProfile = async (req, res) => {
 
     // Fetch course data for the user
     const courses = await Course.find({ userId }).select(
-      "courseName studentId password courseId status lectureProgress"
+      "courseName studentId password courseId status lectureProgress videoProgress documentProgress"
     );
 
     // Combine user and profile data
@@ -35,7 +36,7 @@ const getProfile = async (req, res) => {
       username: user.username,
       email: user.email,
       role: user.role,
-      displayName: profile?.displayName || user.username,
+      // displayName removed: use username on client when needed
       avatar: profile?.avatar || "",
       phone: profile?.phone || "",
       gender: profile?.gender || "未設定",
@@ -49,6 +50,8 @@ const getProfile = async (req, res) => {
         password: course.password,
         status: course.status,
         lectureProgress: course.lectureProgress,
+        videoProgress: course.videoProgress || [],
+        documentProgress: course.documentProgress || [],
       })),
     };
 
@@ -67,7 +70,7 @@ const getProfile = async (req, res) => {
           username: profileUser?.username || "",
           email: profileUser?.email || "",
           role: profileUser?.role || "student",
-          displayName: prof.displayName,
+          // displayName removed
           avatar: prof.avatar,
           phone: prof.phone,
           gender: prof.gender,
@@ -115,8 +118,7 @@ const getProfile = async (req, res) => {
 const updateProfile = async (req, res) => {
   try {
     const { userId } = req.user;
-    const { username, displayName, phone, gender, birthday, email, avatar } =
-      req.body;
+    const { username, phone, gender, birthday, email, avatar } = req.body;
 
     // Validate email format (only if email is provided and not empty)
     if (
@@ -178,17 +180,12 @@ const updateProfile = async (req, res) => {
     if (!profile) {
       profile = new Profile({
         userId,
-        displayName: displayName || user.username,
       });
     }
 
     // Update profile fields
     let profileUpdated = false;
 
-    if (displayName !== undefined && displayName.trim() !== "") {
-      profile.displayName = displayName;
-      profileUpdated = true;
-    }
     if (phone !== undefined && phone.trim() !== "") {
       profile.phone = phone;
       profileUpdated = true;
@@ -215,7 +212,6 @@ const updateProfile = async (req, res) => {
       username: user.username,
       email: user.email,
       role: user.role,
-      displayName: profile.displayName,
       avatar: profile.avatar,
       phone: profile.phone,
       gender: profile.gender,
@@ -362,9 +358,68 @@ const deleteAvatar = async (req, res) => {
   }
 };
 
+/**
+ * Change user password
+ * @route PUT /api/profile/password
+ */
+const changePassword = async (req, res) => {
+  try {
+    const { userId } = req.user;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password and new password are required",
+      });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be at least 8 characters",
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: "Current password is incorrect",
+      });
+    }
+
+    const saltRounds = 12;
+    const hashed = await bcrypt.hash(newPassword, saltRounds);
+    user.password = hashed;
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Password updated successfully",
+    });
+  } catch (error) {
+    console.error("Error changing password:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to change password",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getProfile,
   updateProfile,
   uploadAvatar,
   deleteAvatar,
+  changePassword,
 };

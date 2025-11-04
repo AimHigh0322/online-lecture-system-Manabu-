@@ -2,18 +2,20 @@ import React from "react";
 import { X, Video, AlertCircle } from "lucide-react";
 
 interface Material {
+  type: "video" | "pdf";
   id: string;
+  _id?: string;
   title: string;
   description: string;
   courseId: string;
   courseName: string;
-  tags?: string | number | null;
-  videoUrl: string;
+  videoUrl?: string;
+  pdfUrl?: string;
   uploadedBy: string;
   createdAt: string;
   updatedAt: string;
   duration?: string;
-  order: number;
+  order?: number;
 }
 
 interface ViewMaterialModalProps {
@@ -30,19 +32,6 @@ export const ViewMaterialModal: React.FC<ViewMaterialModalProps> = ({
   material,
 }) => {
   if (!isOpen || !material) return null;
-
-  // Helper function to safely handle tags
-  const getTagsArray = (tags: string | number | null | undefined): string[] => {
-    if (!tags || typeof tags !== "string") return [];
-    return tags
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter((tag) => tag.length > 0);
-  };
-
-  const hasValidTags = (tags: string | number | null | undefined): boolean => {
-    return !!(tags && typeof tags === "string" && tags.trim());
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("ja-JP", {
@@ -69,7 +58,7 @@ export const ViewMaterialModal: React.FC<ViewMaterialModalProps> = ({
         {/* Scrollable Body */}
         <div className="flex-1 overflow-y-auto p-8 pt-6">
           <div className="space-y-6">
-            {/* Video Player */}
+            {/* Player */}
             <div className="bg-gray-100 rounded-lg p-4">
               <div className="flex items-center space-x-3 mb-3">
                 <Video className="w-8 h-8 text-orange-600" />
@@ -88,7 +77,8 @@ export const ViewMaterialModal: React.FC<ViewMaterialModalProps> = ({
                 </div>
               </div>
               <div className="aspect-video bg-black rounded-lg overflow-hidden relative">
-                <video
+                {material.type === "video" ? (
+                  <video
                   className="w-full h-full object-contain"
                   controls
                   preload="metadata"
@@ -122,7 +112,7 @@ export const ViewMaterialModal: React.FC<ViewMaterialModalProps> = ({
                     src={`${
                       import.meta.env.VITE_API_URL ||
                       "http://85.131.238.90:4000"
-                    }${material.videoUrl}`}
+                    }${material.videoUrl || ""}`}
                     type="video/mp4"
                     onError={(e) => {
                       console.error("Source load error:", e);
@@ -147,6 +137,16 @@ export const ViewMaterialModal: React.FC<ViewMaterialModalProps> = ({
                     お使いのブラウザは動画の再生をサポートしていません。
                   </p>
                 </video>
+                ) : (
+                  <iframe
+                    className="w-full h-full bg-white"
+                    src={`${
+                      import.meta.env.VITE_API_URL ||
+                      "http://85.131.238.90:4000"
+                    }${material.pdfUrl || ""}#toolbar=1&navpanes=0&scrollbar=1`}
+                    title="PDF Viewer"
+                  />
+                )}
                 <div
                   className="absolute inset-0 bg-black flex items-center justify-center text-white"
                   style={{ display: "none" }}
@@ -196,23 +196,7 @@ export const ViewMaterialModal: React.FC<ViewMaterialModalProps> = ({
                 </label>
                 <p className="text-slate-800">{material.uploadedBy}</p>
               </div>
-              {hasValidTags(material.tags) && (
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    タグ
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {getTagsArray(material.tags).map((tag, i) => (
-                      <span
-                        key={i}
-                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* Tags removed */}
             </div>
           </div>
         </div>

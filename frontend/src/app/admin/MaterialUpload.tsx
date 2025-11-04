@@ -11,12 +11,13 @@ import {
 } from "lucide-react";
 import { useToast } from "../../hooks/useToast";
 
+type MaterialType = "video" | "pdf";
+
 interface MaterialFormData {
   title: string;
   description: string;
   courseId: string;
   courseName: string;
-  tags: string;
 }
 
 interface MaterialErrors {
@@ -39,6 +40,7 @@ const MaterialUpload: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [materialType, setMaterialType] = useState<MaterialType>("video");
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -48,7 +50,6 @@ const MaterialUpload: React.FC = () => {
     description: "",
     courseId: "",
     courseName: "",
-    tags: "",
   });
   const [errors, setErrors] = useState<MaterialErrors>({});
   const [isCheckingTitle, setIsCheckingTitle] = useState(false);
@@ -67,44 +68,62 @@ const MaterialUpload: React.FC = () => {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Validate file type - explicitly check for supported video formats
-      const allowedMimeTypes = [
-        "video/mp4",
-        "video/avi",
-        "video/x-msvideo", // Alternative AVI MIME type
-        "video/quicktime", // MOV files
-        "video/x-ms-wmv", // WMV files
-        "video/webm",
-        "video/ogg",
-      ];
-
-      const fileExtension = file.name.toLowerCase().split(".").pop();
-      const allowedExtensions = ["mp4", "avi", "mov", "wmv", "webm", "ogg"];
-
-      if (
-        !file.type.startsWith("video/") &&
-        !allowedMimeTypes.includes(file.type) &&
-        !allowedExtensions.includes(fileExtension || "")
-      ) {
-        showToast({
-          type: "error",
-          title: "ファイル形式エラー",
-          message:
-            "サポートされている動画形式を選択してください。対応形式: MP4, AVI, MOV, WMV, WebM, OGG",
-        });
-        return;
+      let isValid = true;
+      if (materialType === "video") {
+        const allowedMimeTypes = [
+          "video/mp4",
+          "video/avi",
+          "video/x-msvideo",
+          "video/quicktime",
+          "video/x-ms-wmv",
+          "video/webm",
+          "video/ogg",
+        ];
+        const fileExtension = file.name.toLowerCase().split(".").pop();
+        const allowedExtensions = ["mp4", "avi", "mov", "wmv", "webm", "ogg"];
+        if (
+          !file.type.startsWith("video/") &&
+          !allowedMimeTypes.includes(file.type) &&
+          !allowedExtensions.includes(fileExtension || "")
+        ) {
+          isValid = false;
+          showToast({
+            type: "error",
+            title: "ファイル形式エラー",
+            message:
+              "サポートされている動画形式を選択してください。対応形式: MP4, AVI, MOV, WMV, WebM, OGG",
+          });
+        }
+        const maxSize = 100 * 1024 * 1024;
+        if (file.size > maxSize) {
+          isValid = false;
+          showToast({
+            type: "error",
+            title: "ファイルサイズエラー",
+            message: "動画の最大サイズは100MBです。",
+          });
+        }
+      } else {
+        if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+          isValid = false;
+          showToast({
+            type: "error",
+            title: "ファイル形式エラー",
+            message: "PDFファイルを選択してください。",
+          });
+        }
+        const maxSize = 50 * 1024 * 1024;
+        if (file.size > maxSize) {
+          isValid = false;
+          showToast({
+            type: "error",
+            title: "ファイルサイズエラー",
+            message: "PDFの最大サイズは50MBです。",
+          });
+        }
       }
 
-      // Validate file size (100MB limit)
-      const maxSize = 100 * 1024 * 1024; // 100MB
-      if (file.size > maxSize) {
-        showToast({
-          type: "error",
-          title: "ファイルサイズエラー",
-          message: "ファイルサイズは100MB以下にしてください。",
-        });
-        return;
-      }
+      if (!isValid) return;
 
       setSelectedFile(file);
       setErrors({ ...errors, video: undefined });
@@ -257,12 +276,15 @@ const MaterialUpload: React.FC = () => {
 
     try {
       const submitData = new FormData();
-      submitData.append("video", selectedFile!);
+      if (materialType === "video") {
+        submitData.append("video", selectedFile!);
+      } else {
+        submitData.append("pdf", selectedFile!);
+      }
       submitData.append("title", formData.title.trim());
       submitData.append("description", formData.description.trim());
       submitData.append("courseId", formData.courseId);
       submitData.append("courseName", formData.courseName);
-      submitData.append("tags", formData.tags);
 
       // Get user info from localStorage
       const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -279,10 +301,10 @@ const MaterialUpload: React.FC = () => {
         });
       }, 200);
 
-      const response = await fetch("/api/materials/upload", {
-        method: "POST",
-        body: submitData,
-      });
+      const response = await fetch(
+        materialType === "video" ? "/api/materials/upload" : "/api/materials/upload-pdf",
+        { method: "POST", body: submitData }
+      );
 
       clearInterval(progressInterval);
       setUploadProgress(100);
@@ -303,8 +325,8 @@ const MaterialUpload: React.FC = () => {
           description: "",
           courseId: "",
           courseName: "",
-          tags: "",
         });
+        setMaterialType("video");
         setErrors({});
         setTitleExists(false);
         if (fileInputRef.current) {
@@ -386,19 +408,46 @@ const MaterialUpload: React.FC = () => {
             管理画面に戻る
           </button>
           <h1 className="text-3xl font-bold text-gray-900">教材アップロード</h1>
-          <p className="mt-2 text-gray-600">
-            動画ファイルをアップロードして学習教材を作成します
-          </p>
+          <p className="mt-2 text-gray-600">動画またはPDFをアップロードして学習教材を作成します</p>
         </div>
 
         {/* Upload Form */}
         <div className="bg-white rounded-lg shadow-lg p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Video Upload Section */}
+            {/* Type and File Upload Section */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                動画ファイル *
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  ファイル種別 *
+                </label>
+                <div className="inline-flex items-center rounded-lg border border-gray-300 overflow-hidden shadow-sm">
+                  <button
+                    type="button"
+                    onClick={() => setMaterialType("video")}
+                    className={`${
+                      materialType === "video"
+                        ? "bg-orange-600 text-white"
+                        : "bg-white text-slate-700 hover:bg-slate-50"
+                    } px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer`}
+                    aria-pressed={materialType === "video"}
+                  >
+                    動画
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMaterialType("pdf")}
+                    className={`${
+                      materialType === "pdf"
+                        ? "bg-orange-600 text-white"
+                        : "bg-white text-slate-700 hover:bg-slate-50"
+                    } px-3 py-1.5 text-sm font-medium border-l border-gray-300 transition-colors cursor-pointer`}
+                    aria-pressed={materialType === "pdf"}
+                  >
+                    PDF
+                  </button>
+                </div>
+              </div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">ファイル *</label>
 
               {!selectedFile ? (
                 <div
@@ -406,14 +455,14 @@ const MaterialUpload: React.FC = () => {
                   className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 cursor-pointer transition-colors"
                 >
                   <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-lg font-medium text-gray-600 mb-2">
-                    動画ファイルを選択
-                  </p>
+                  <p className="text-lg font-medium text-gray-600 mb-2">ファイルを選択</p>
                   <p className="text-sm text-gray-500">
                     クリックしてファイルを選択するか、ドラッグ&ドロップしてください
                   </p>
                   <p className="text-xs text-gray-400 mt-2">
-                    対応形式: MP4, AVI, MOV, WMV (最大100MB)
+                    {materialType === "video"
+                      ? "対応形式: MP4, AVI, MOV, WMV, WebM, OGG (最大100MB)"
+                      : "対応形式: PDF (最大50MB)"}
                   </p>
                 </div>
               ) : (
@@ -444,7 +493,9 @@ const MaterialUpload: React.FC = () => {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="video/mp4,video/avi,video/x-msvideo,video/quicktime,video/x-ms-wmv,video/webm,video/ogg,.mp4,.avi,.mov,.wmv,.webm,.ogg"
+                accept={materialType === "video"
+                  ? "video/mp4,video/avi,video/x-msvideo,video/quicktime,video/x-ms-wmv,video/webm,video/ogg,.mp4,.avi,.mov,.wmv,.webm,.ogg"
+                  : "application/pdf,.pdf"}
                 onChange={handleFileSelect}
                 className="hidden"
               />
@@ -543,20 +594,7 @@ const MaterialUpload: React.FC = () => {
                 </select>
               </div>
 
-              {/* Tags */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  タグ
-                </label>
-                <input
-                  type="text"
-                  name="tags"
-                  value={formData.tags}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="タグをカンマ区切りで入力 (例: 基礎, 文法, 会話)"
-                />
-              </div>
+              {/* Tags removed */}
             </div>
 
             {/* Upload Progress */}

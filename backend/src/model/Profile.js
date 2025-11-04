@@ -8,10 +8,6 @@ const profileSchema = new mongoose.Schema(
       unique: true,
       index: true,
     },
-    displayName: {
-      type: String,
-      default: "",
-    },
     avatar: {
       type: String,
       default: "",

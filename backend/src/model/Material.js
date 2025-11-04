@@ -2,6 +2,12 @@ const mongoose = require("mongoose");
 
 const materialSchema = new mongoose.Schema(
   {
+    type: {
+      type: String,
+      enum: ["video", "pdf"],
+      default: "video",
+      index: true,
+    },
     title: {
       type: String,
       required: true,
@@ -22,18 +28,12 @@ const materialSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    videoUrl: {
-      type: String,
-      required: true,
-    },
-    videoFileName: {
-      type: String,
-      required: true,
-    },
-    videoSize: {
-      type: Number,
-      default: 0,
-    },
+    videoUrl: { type: String },
+    videoFileName: { type: String },
+    videoSize: { type: Number, default: 0 },
+    pdfUrl: { type: String },
+    pdfFileName: { type: String },
+    pdfSize: { type: Number, default: 0 },
     tags: [
       {
         type: String,
@@ -71,6 +71,7 @@ const materialSchema = new mongoose.Schema(
 materialSchema.index({ courseId: 1 });
 materialSchema.index({ uploadedBy: 1 });
 materialSchema.index({ createdAt: -1 });
+materialSchema.index({ type: 1 });
 
 const Material = mongoose.model("Material", materialSchema);
 

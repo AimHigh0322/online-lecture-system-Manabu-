@@ -37,7 +37,31 @@ const courseSchema = new mongoose.Schema(
       index: true,
     },
     // Course progress and status
-    // Array of lecture progress objects: [{ materialName, progress }]
+    // Video progress with percentage: [{ materialName, progress }]
+    videoProgress: [
+      {
+        materialName: {
+          type: String,
+          required: true,
+        },
+        progress: {
+          type: Number,
+          required: true,
+          min: 0,
+          max: 100,
+        },
+      },
+    ],
+    // Document progress without percentage (completed/not completed): [materialName]
+    documentProgress: [
+      {
+        materialName: {
+          type: String,
+          required: true,
+        },
+      },
+    ],
+    // Legacy lectureProgress for backward compatibility (will be migrated gradually)
     lectureProgress: [
       {
         materialName: {
@@ -52,7 +76,7 @@ const courseSchema = new mongoose.Schema(
         },
       },
     ],
-    // Overall course completion rate (calculated from lectureProgress)
+    // Overall course completion rate (calculated from videoProgress only)
     completionRate: {
       type: Number,
       default: 0,

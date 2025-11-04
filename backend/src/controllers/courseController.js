@@ -18,7 +18,7 @@ const getUserCourses = async (req, res) => {
     // Get all courses for this user
     const courses = await Course.find({ userId: userId })
       .select(
-        "courseId courseName studentId password enrollmentAt lectureProgress status lastAccessedAt"
+        "courseId courseName studentId password enrollmentAt lectureProgress videoProgress documentProgress status lastAccessedAt"
       )
       .sort({ enrollmentAt: -1 });
 
@@ -81,7 +81,7 @@ const getCourseById = async (req, res) => {
 const updateCourseProgress = async (req, res) => {
   try {
     const { courseId } = req.params;
-    const { materialName, progress } = req.body;
+    const { materialName, progress, materialType } = req.body;
     const userId = req.user?.userId;
 
     if (!userId) {
@@ -99,13 +99,8 @@ const updateCourseProgress = async (req, res) => {
       });
     }
 
-    // Validate progress
-    if (typeof progress !== "number" || progress < 0 || progress > 100) {
-      return res.status(400).json({
-        success: false,
-        message: "進捗は0-100の間で指定してください",
-      });
-    }
+    // Determine material type (video or pdf)
+    const type = materialType || "video"; // Default to video for backward compatibility
 
     // Find the current course
     const course = await Course.findOne({
@@ -120,50 +115,98 @@ const updateCourseProgress = async (req, res) => {
       });
     }
 
-    // Find existing progress entry for this material
-    const existingProgressIndex = course.lectureProgress.findIndex(
-      (item) => item.materialName === materialName
-    );
+    // Handle video progress (with percentage)
+    if (type === "video") {
+      // Validate progress for videos
+      if (typeof progress !== "number" || progress < 0 || progress > 100) {
+        return res.status(400).json({
+          success: false,
+          message: "進捗は0-100の間で指定してください",
+        });
+      }
 
-    // Check if this material's progress is already 100
-    if (
-      existingProgressIndex !== -1 &&
-      course.lectureProgress[existingProgressIndex].progress === 100
-    ) {
-      return res.json({
-        success: true,
-        course: course,
-        skipped: true,
-      });
-    }
+      // Find existing progress entry for this video material
+      const existingProgressIndex = course.videoProgress.findIndex(
+        (item) => item.materialName === materialName
+      );
 
-    // Update or add progress for this material
-    if (existingProgressIndex !== -1) {
-      // Update existing entry
-      course.lectureProgress[existingProgressIndex].progress = progress;
-    } else {
-      // Add new entry
-      course.lectureProgress.push({
+      // Check if this material's progress is already 100
+      if (
+        existingProgressIndex !== -1 &&
+        course.videoProgress[existingProgressIndex].progress === 100
+      ) {
+        return res.json({
+          success: true,
+          course: course,
+          skipped: true,
+        });
+      }
+
+      // Update or add progress for this video material
+      if (existingProgressIndex !== -1) {
+        // Update existing entry
+        course.videoProgress[existingProgressIndex].progress = progress;
+      } else {
+        // Add new entry
+        course.videoProgress.push({
+          materialName: materialName,
+          progress: progress,
+        });
+      }
+
+      // Also update legacy lectureProgress for backward compatibility
+      const legacyIndex = course.lectureProgress.findIndex(
+        (item) => item.materialName === materialName
+      );
+      if (legacyIndex !== -1) {
+        course.lectureProgress[legacyIndex].progress = progress;
+      } else {
+        course.lectureProgress.push({
+          materialName: materialName,
+          progress: progress,
+        });
+      }
+    } else if (type === "pdf") {
+      // Handle document progress (completed/not completed only, no percentage)
+      const existingDocumentIndex = course.documentProgress.findIndex(
+        (item) => item.materialName === materialName
+      );
+
+      // If already completed, skip
+      if (existingDocumentIndex !== -1) {
+        return res.json({
+          success: true,
+          course: course,
+          skipped: true,
+        });
+      }
+
+      // Add to document progress (mark as completed)
+      course.documentProgress.push({
         materialName: materialName,
-        progress: progress,
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "無効な材料タイプです（videoまたはpdf）",
       });
     }
 
-    // Calculate completion rate based on lecture progress
-    const calculateCompletionRate = (lectureProgress) => {
-      if (!lectureProgress || lectureProgress.length === 0) return 0;
+    // Calculate completion rate based on video progress only (not documents)
+    const calculateCompletionRate = (videoProgress) => {
+      if (!videoProgress || videoProgress.length === 0) return 0;
 
-      const totalProgress = lectureProgress.reduce(
+      const totalProgress = videoProgress.reduce(
         (sum, item) => sum + item.progress,
         0
       );
-      return Math.round(totalProgress / lectureProgress.length);
+      return Math.round(totalProgress / videoProgress.length);
     };
 
-    // Update completion rate
-    course.completionRate = calculateCompletionRate(course.lectureProgress);
+    // Update completion rate (only from videos)
+    course.completionRate = calculateCompletionRate(course.videoProgress);
 
-    // Check if course is completed (100% completion rate)
+    // Check if course is completed (100% completion rate for videos)
     if (course.completionRate === 100) {
       course.status = "completed";
       course.completedAt = new Date();

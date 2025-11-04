@@ -262,7 +262,9 @@ const handlePaymentSuccess = async (req, res) => {
       paymentId: sessionId,
       subscriptionId: session.subscription || null,
       paymentAmount: session.amount_total || 0,
-      lectureProgress: [],
+      lectureProgress: [], // Legacy field for backward compatibility
+      videoProgress: [], // Video progress with percentage
+      documentProgress: [], // Document progress without percentage
       status: "active",
       lastAccessedAt: new Date(),
     });

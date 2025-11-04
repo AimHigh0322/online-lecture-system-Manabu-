@@ -1,16 +1,19 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 export interface Material {
+  type: "video" | "pdf";
   _id: string;
   title: string;
   description: string;
   courseId: string;
   courseName: string;
-  videoUrl: string;
-  videoFileName: string;
-  videoSize: number;
+  videoUrl?: string;
+  videoFileName?: string;
+  videoSize?: number;
+  pdfUrl?: string;
+  pdfFileName?: string;
+  pdfSize?: number;
   duration: string;
-  tags: string[];
   uploadedBy: string;
   uploadedAt: string;
   lastModified: string;

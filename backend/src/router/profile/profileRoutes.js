@@ -6,6 +6,7 @@ const {
   updateProfile,
   uploadAvatar,
   deleteAvatar,
+  changePassword,
 } = require("../../controllers/profileController");
 
 const router = express.Router();
@@ -21,5 +22,8 @@ router.post("/avatar", verifyToken, upload.single("avatar"), uploadAvatar);
 
 // Delete avatar (protected route)
 router.delete("/avatar", verifyToken, deleteAvatar);
+
+// Change password (protected route)
+router.put("/password", verifyToken, changePassword);
 
 module.exports = router;

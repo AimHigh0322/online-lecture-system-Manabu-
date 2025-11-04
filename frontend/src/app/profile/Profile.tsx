@@ -45,7 +45,6 @@ interface ProfileData {
   email?: string;
   role: string;
   phone?: string;
-  displayName?: string;
   avatar?: string;
   gender?: string;
   birthday?: string;
@@ -73,6 +72,24 @@ export const ProfileManagement: React.FC = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
+  const [expandPassword, setExpandPassword] = useState(true);
+
+  const getPasswordStrength = (pw: string) => {
+    let score = 0;
+    if (pw.length >= 8) score++;
+    if (/[A-Z]/.test(pw)) score++;
+    if (/[a-z]/.test(pw)) score++;
+    if (/\d/.test(pw)) score++;
+    if (/[^A-Za-z0-9]/.test(pw)) score++;
+    return Math.min(score, 5);
+  };
+  const strength = getPasswordStrength(newPassword);
   // Fetch profile data from API
   useEffect(() => {
     const fetchProfile = async () => {
@@ -200,10 +217,41 @@ export const ProfileManagement: React.FC = () => {
         setIsUploadingAvatar(false);
       }
 
+      // Optional: Change password first if provided
+      if (newPassword || confirmNewPassword || currentPassword) {
+        if (!currentPassword || !newPassword || !confirmNewPassword) {
+          throw new Error(
+            "現在のパスワード、新しいパスワード、確認を全て入力してください"
+          );
+        }
+        if (newPassword !== confirmNewPassword) {
+          throw new Error("新しいパスワードと確認が一致しません");
+        }
+        if (newPassword.length < 8) {
+          throw new Error("新しいパスワードは8文字以上にしてください");
+        }
+
+        const pwResponse = await fetch(`${API_URL}/api/profile/password`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            currentPassword: currentPassword,
+            newPassword: newPassword,
+          }),
+        });
+
+        const pwData = await pwResponse.json();
+        if (!pwResponse.ok) {
+          throw new Error(pwData.message || "パスワード変更に失敗しました");
+        }
+      }
+
       // Step 2: Update profile data
       const profileUpdateData: {
         username?: string;
-        displayName?: string;
         email?: string;
         phone?: string;
         gender?: string;
@@ -214,8 +262,7 @@ export const ProfileManagement: React.FC = () => {
       // Only include fields that have values
       if (editedProfile.username)
         profileUpdateData.username = editedProfile.username;
-      if (editedProfile.displayName)
-        profileUpdateData.displayName = editedProfile.displayName;
+      // displayName removed
       if (editedProfile.email) profileUpdateData.email = editedProfile.email;
       if (editedProfile.phone) profileUpdateData.phone = editedProfile.phone;
       if (editedProfile.gender) profileUpdateData.gender = editedProfile.gender;
@@ -250,9 +297,14 @@ export const ProfileManagement: React.FC = () => {
       showToast({
         type: "success",
         title: "プロフィールが更新されました",
-        message: "プロフィール情報が正常に保存されました。",
+        message: newPassword
+          ? "プロフィールとパスワードが正常に保存されました。"
+          : "プロフィール情報が正常に保存されました。",
         duration: 4000,
       });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmNewPassword("");
     } catch (error) {
       console.error("Error saving profile:", error);
       setIsUpdating(false);
@@ -403,41 +455,42 @@ export const ProfileManagement: React.FC = () => {
           {/* Avatar Section at Top */}
           <div className="flex flex-col items-center mb-8 pb-8 border-b border-slate-200">
             <div className="relative inline-block mb-4">
-              <div className="w-32 h-32 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center shadow-xl">
-                {(editing ? editedProfile?.avatar : profile?.avatar) ? (
-                  <img
-                    src={
-                      (
-                        (editing ? editedProfile?.avatar : profile?.avatar) ||
-                        ""
-                      ).startsWith("data:")
-                        ? editing
-                          ? editedProfile?.avatar
-                          : profile?.avatar
-                        : `${
-                            import.meta.env.VITE_API_URL ||
-                            "http://85.131.238.90:4000"
-                          }${editing ? editedProfile?.avatar : profile?.avatar}`
-                    }
-                    alt="Avatar"
-                    className="w-full h-full rounded-full object-cover"
-                  />
-                ) : (
-                  <UserCircle className="w-20 h-20 text-white" />
-                )}
-              </div>
+              {(editing ? editedProfile?.avatar : profile?.avatar) ? (
+                <img
+                  src={
+                    (
+                      (editing ? editedProfile?.avatar : profile?.avatar) || ""
+                    ).startsWith("data:")
+                      ? editing
+                        ? editedProfile?.avatar
+                        : profile?.avatar
+                      : `${
+                          import.meta.env.VITE_API_URL ||
+                          "http://85.131.238.90:4000"
+                        }${editing ? editedProfile?.avatar : profile?.avatar}`
+                  }
+                  alt="Avatar"
+                  className="w-full h-full rounded-full object-cover"
+                />
+              ) : (
+                <img
+                  src="/img/default_avatar.png"
+                  alt="デフォルトアバター"
+                  className="w-20 h-20 rounded-full object-cover"
+                />
+              )}
               {editing && (
                 <label
                   className={`absolute bottom-0 right-0 ${
                     isUploadingAvatar
                       ? "bg-slate-400 cursor-not-allowed"
-                      : "bg-emerald-600 hover:bg-emerald-700 cursor-pointer"
+                      : "bg-slate-500 hover:bg-slate-600 cursor-pointer"
                   } text-white p-2 rounded-full shadow-lg transition-colors`}
                 >
                   {isUploadingAvatar ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <div className="w-2 h-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   ) : (
-                    <Camera className="w-4 h-4" />
+                    <Camera className="w-3 h-3" />
                   )}
                   <input
                     type="file"
@@ -451,7 +504,7 @@ export const ProfileManagement: React.FC = () => {
             </div>
 
             <h3 className="text-xl font-bold text-slate-800 mb-1">
-              {profile?.displayName || profile?.username || profile?.id}
+              {profile?.username || profile?.id}
             </h3>
 
             <p className="text-sm text-slate-600 mb-4">
@@ -487,28 +540,7 @@ export const ProfileManagement: React.FC = () => {
               )}
             </div>
 
-            {/* Display Name */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                表示名
-              </label>
-              {editing ? (
-                <input
-                  type="text"
-                  value={editedProfile?.displayName || ""}
-                  onChange={(e) =>
-                    setEditedProfile((prev) =>
-                      prev ? { ...prev, displayName: e.target.value } : null
-                    )
-                  }
-                  className="w-full px-4 py-3 border-2 border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
-                />
-              ) : (
-                <div className="flex items-center bg-slate-50 border border-slate-300 rounded-lg p-3">
-                  <span className="text-slate-800">{profile.displayName}</span>
-                </div>
-              )}
-            </div>
+            {/* Display Name removed */}
 
             {/* Email */}
             <div>
@@ -630,6 +662,159 @@ export const ProfileManagement: React.FC = () => {
                         })
                       : "未設定"}
                   </span>
+                </div>
+              )}
+            </div>
+
+            {/* Password Change */}
+            <div className="mt-10">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800">
+                    パスワード変更
+                  </label>
+                  <p className="text-xs text-slate-500 mt-1">
+                    大文字・小文字・数字・記号の組み合わせを推奨します
+                  </p>
+                </div>
+                {editing && (
+                  <button
+                    type="button"
+                    onClick={() => setExpandPassword((v: boolean) => !v)}
+                    className="px-3 py-1.5 text-xs font-medium rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50"
+                  >
+                    {expandPassword ? "閉じる" : "開く"}
+                  </button>
+                )}
+              </div>
+              {editing ? (
+                <div
+                  className={`transition-all duration-200 ${
+                    expandPassword
+                      ? "opacity-100"
+                      : "opacity-0 pointer-events-none h-0"
+                  }`}
+                >
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-medium text-slate-600 mb-1">
+                          現在のパスワード
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showCurrentPw ? "text" : "password"}
+                            placeholder="現在のパスワード"
+                            value={currentPassword}
+                            onChange={(e) => setCurrentPassword(e.target.value)}
+                            className="w-full px-4 py-2.5 pr-10 border border-slate-300 rounded-md focus:ring-2 focus:ring-slate-500 focus:border-slate-500 bg-white"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowCurrentPw((v) => !v)}
+                            className="absolute inset-y-0 right-3 flex items-center text-slate-500 hover:text-slate-700"
+                            aria-label="現在のパスワードを表示/非表示"
+                          >
+                            {showCurrentPw ? (
+                              <EyeOff className="w-4 h-4" />
+                            ) : (
+                              <Eye className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">
+                          新しいパスワード
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showNewPw ? "text" : "password"}
+                            placeholder="新しいパスワード (8文字以上)"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            className="w-full px-4 py-2.5 pr-10 border border-slate-300 rounded-md focus:ring-2 focus:ring-slate-500 focus:border-slate-500 bg-white"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowNewPw((v) => !v)}
+                            className="absolute inset-y-0 right-3 flex items-center text-slate-500 hover:text-slate-700"
+                            aria-label="新しいパスワードを表示/非表示"
+                          >
+                            {showNewPw ? (
+                              <EyeOff className="w-4 h-4" />
+                            ) : (
+                              <Eye className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
+                        <div className="mt-2">
+                          <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                            <div
+                              className={`${
+                                strength <= 2
+                                  ? "bg-rose-500"
+                                  : strength === 3
+                                  ? "bg-amber-500"
+                                  : "bg-emerald-500"
+                              } h-1.5 transition-all`}
+                              style={{ width: `${(strength / 5) * 100}%` }}
+                            />
+                          </div>
+                          <div className="mt-1 flex items-center justify-between text-[10px] text-slate-500">
+                            <span>強度</span>
+                            <span>
+                              {strength <= 2
+                                ? "弱い"
+                                : strength === 3
+                                ? "普通"
+                                : "強い"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">
+                          新しいパスワード（確認）
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showConfirmPw ? "text" : "password"}
+                            placeholder="新しいパスワード（確認）"
+                            value={confirmNewPassword}
+                            onChange={(e) =>
+                              setConfirmNewPassword(e.target.value)
+                            }
+                            className="w-full px-4 py-2.5 pr-10 border border-slate-300 rounded-md focus:ring-2 focus:ring-slate-500 focus:border-slate-500 bg-white"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPw((v) => !v)}
+                            className="absolute inset-y-0 right-3 flex items-center text-slate-500 hover:text-slate-700"
+                            aria-label="確認用パスワードを表示/非表示"
+                          >
+                            {showConfirmPw ? (
+                              <EyeOff className="w-4 h-4" />
+                            ) : (
+                              <Eye className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
+                        {confirmNewPassword &&
+                          newPassword !== confirmNewPassword && (
+                            <p className="mt-1.5 text-[11px] text-rose-600">
+                              新しいパスワードと確認が一致しません
+                            </p>
+                          )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg p-3 text-slate-600">
+                  セキュリティのため、ここでは表示しません
                 </div>
               )}
             </div>
@@ -780,12 +965,7 @@ export const ProfileManagement: React.FC = () => {
                   • ユーザー名: {profile?.username} → {editedProfile?.username}
                 </li>
               )}
-              {editedProfile?.displayName !== profile?.displayName && (
-                <li>
-                  • 表示名: {profile?.displayName} →{" "}
-                  {editedProfile?.displayName}
-                </li>
-              )}
+              {/* displayName removed */}
               {editedProfile?.email !== profile?.email && (
                 <li>
                   • メール: {profile?.email} → {editedProfile?.email}
@@ -808,6 +988,9 @@ export const ProfileManagement: React.FC = () => {
                   • 生年月日: {profile?.birthday || "未設定"} →{" "}
                   {editedProfile?.birthday}
                 </li>
+              )}
+              {(newPassword || confirmNewPassword || currentPassword) && (
+                <li>• パスワードの変更</li>
               )}
             </ul>
           </div>

@@ -12,6 +12,7 @@ import {
   SkipBack,
   SkipForward,
   Check,
+  FileText,
 } from "lucide-react";
 import { useGetMaterialsByCourseQuery } from "../../api/materials/materialSlice";
 import { useCheckExamEligibilityMutation } from "../../api/exam/examApiSlice";
@@ -32,16 +33,16 @@ const getApiUrl = () => {
   return isProduction ? "http://85.131.238.90:4000" : "http://localhost:4000";
 };
 
-// Utility function to construct video URL
-const getVideoUrl = (relativePath: string): string => {
-  return `${getApiUrl()}${relativePath}`;
-};
+// Utility function to construct file URL
+const getFileUrl = (relativePath: string): string => `${getApiUrl()}${relativePath}`;
 
 interface Lesson {
+  type: "video" | "pdf";
   id: string;
   title: string;
   description: string;
-  videoUrl: string;
+  videoUrl?: string;
+  pdfUrl?: string;
   completed: boolean;
   order: number;
 }
@@ -76,6 +77,7 @@ export const CourseLearning: React.FC = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [lessonToComplete, setLessonToComplete] = useState<Lesson | null>(null);
   const [originalTime, setOriginalTime] = useState(0);
+  const [activeTab, setActiveTab] = useState<"video" | "document">("video");
 
   const courseNames: { [key: string]: string } = {
     general: "一般講習",
@@ -92,22 +94,49 @@ export const CourseLearning: React.FC = () => {
   const lessons: Lesson[] = useMemo(
     () =>
       materialsData?.materials?.map((material, index) => ({
+        type: material.type || "video",
         id: material._id,
         title: material.title,
         description: material.description,
-        videoUrl: getVideoUrl(material.videoUrl), // Construct proper video URL
+        videoUrl: material.videoUrl ? getFileUrl(material.videoUrl) : undefined,
+        pdfUrl: material.pdfUrl ? getFileUrl(material.pdfUrl) : undefined,
         completed: false, // This could be tracked in user progress
         order: index + 1,
       })) || [],
     [materialsData?.materials]
   );
 
-  // Set first lesson as current when materials load
+  // Separate lessons by type
+  const videoLessons = useMemo(
+    () => lessons.filter((lesson) => lesson.type === "video"),
+    [lessons]
+  );
+  const documentLessons = useMemo(
+    () => lessons.filter((lesson) => lesson.type === "pdf"),
+    [lessons]
+  );
+
+  // Get lessons based on active tab
+  const filteredLessons = useMemo(
+    () => (activeTab === "video" ? videoLessons : documentLessons),
+    [activeTab, videoLessons, documentLessons]
+  );
+
+  // Set first lesson as current when materials load or tab changes
   useEffect(() => {
-    if (lessons.length > 0 && !currentLesson) {
-      setCurrentLesson(lessons[0]);
+    if (filteredLessons.length > 0) {
+      // If current lesson is not in filtered lessons, switch to first lesson in active tab
+      if (!currentLesson || !filteredLessons.find((l) => l.id === currentLesson.id)) {
+        setCurrentLesson(filteredLessons[0]);
+        setIsPlaying(false);
+        setOriginalTime(0);
+        if (videoRef.current) {
+          videoRef.current.currentTime = 0;
+          videoRef.current.load();
+        }
+      }
     }
-  }, [lessons, currentLesson]);
+  }, [filteredLessons, activeTab]);
 
   // Fetch course progress to check completed materials
   useEffect(() => {
@@ -128,12 +157,12 @@ export const CourseLearning: React.FC = () => {
 
         if (response.ok) {
           const data = await response.json();
-          if (data.success && data.course?.lectureProgress) {
-            // Extract materials that have 100% progress
-            const completed = new Set<string>();
-            const progressMap = new Map<string, number>();
+          const completed = new Set<string>();
+          const progressMap = new Map<string, number>();
 
-            data.course.lectureProgress.forEach(
+          // Handle video progress (with percentage)
+          if (data.success && data.course?.videoProgress) {
+            data.course.videoProgress.forEach(
               (item: { materialName: string; progress: number }) => {
                 progressMap.set(item.materialName, item.progress);
                 if (item.progress === 100) {
@@ -141,10 +170,35 @@ export const CourseLearning: React.FC = () => {
                 }
               }
             );
-
-            setCompletedMaterials(completed);
-            setAllVideoProgress(progressMap);
           }
+
+          // Handle document progress (completed/not completed only, no percentage)
+          if (data.success && data.course?.documentProgress) {
+            data.course.documentProgress.forEach(
+              (item: { materialName: string }) => {
+                completed.add(item.materialName);
+                // Documents don't have progress percentage, so mark as completed
+              }
+            );
+          }
+
+          // Legacy support: also check lectureProgress for backward compatibility
+          if (data.success && data.course?.lectureProgress) {
+            data.course.lectureProgress.forEach(
+              (item: { materialName: string; progress: number }) => {
+                // Only add to progress map if not already set from videoProgress
+                if (!progressMap.has(item.materialName)) {
+                  progressMap.set(item.materialName, item.progress);
+                }
+                if (item.progress === 100) {
+                  completed.add(item.materialName);
+                }
+              }
+            );
+          }
+
+          setCompletedMaterials(completed);
+          setAllVideoProgress(progressMap);
         }
       } catch (error) {
         console.error("Error fetching course progress:", error);
@@ -177,11 +231,11 @@ export const CourseLearning: React.FC = () => {
 
   const handlePreviousVideo = () => {
     if (currentLesson) {
-      const currentIndex = lessons.findIndex(
+      const currentIndex = filteredLessons.findIndex(
         (lesson) => lesson.id === currentLesson.id
       );
       if (currentIndex > 0) {
-        const previousLesson = lessons[currentIndex - 1];
+        const previousLesson = filteredLessons[currentIndex - 1];
         setCurrentLesson(previousLesson);
         setIsPlaying(false);
         setOriginalTime(0); // Reset original time for new lesson
@@ -195,11 +249,11 @@ export const CourseLearning: React.FC = () => {
 
   const handleNextVideo = () => {
     if (currentLesson) {
-      const currentIndex = lessons.findIndex(
+      const currentIndex = filteredLessons.findIndex(
         (lesson) => lesson.id === currentLesson.id
       );
-      if (currentIndex < lessons.length - 1) {
-        const nextLesson = lessons[currentIndex + 1];
+      if (currentIndex < filteredLessons.length - 1) {
+        const nextLesson = filteredLessons[currentIndex + 1];
         setCurrentLesson(nextLesson);
         setIsPlaying(false);
         setOriginalTime(0); // Reset original time for new lesson
@@ -283,12 +337,6 @@ export const CourseLearning: React.FC = () => {
   const handleCompleteClick = async (lesson: Lesson) => {
     if (!courseId) return;
 
-    // For the currently playing video, use actual progress; for others, mark as 100%
-    const progressToSave =
-      lesson.id === currentLesson?.id && duration > 0
-        ? Math.round((currentTime / duration) * 100)
-        : 100;
-
     try {
       const API_URL = getApiUrl();
       const token = getAuthToken();
@@ -303,6 +351,33 @@ export const CourseLearning: React.FC = () => {
         return;
       }
 
+      // Different handling for videos vs documents
+      let requestBody: {
+        materialName: string;
+        materialType: string;
+        progress?: number;
+      };
+
+      if (lesson.type === "video") {
+        // For videos: calculate and save progress percentage
+        const progressToSave =
+          lesson.id === currentLesson?.id && duration > 0
+            ? Math.round((currentTime / duration) * 100)
+            : 100;
+
+        requestBody = {
+          materialName: lesson.title,
+          materialType: "video",
+          progress: progressToSave,
+        };
+      } else {
+        // For documents: only mark as completed (no progress percentage)
+        requestBody = {
+          materialName: lesson.title,
+          materialType: "pdf",
+        };
+      }
+
       const response = await fetch(
         `${API_URL}/api/courses/${courseId}/progress`,
         {
@@ -311,10 +386,7 @@ export const CourseLearning: React.FC = () => {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({
-            materialName: lesson.title,
-            progress: progressToSave,
-          }),
+          body: JSON.stringify(requestBody),
         }
       );
 
@@ -323,47 +395,65 @@ export const CourseLearning: React.FC = () => {
       if (!response.ok) {
         console.error("Failed to update lecture progress:", data.message);
       } else {
-        // Only show toast if not skipped (progress was not already at 100%)
+        // Only show toast if not skipped
         if (!data.skipped) {
-          showToast({
-            type: "success",
-            title: "進捗を保存しました",
-            message: `「${lesson.title}」の進捗: ${progressToSave}%`,
-            duration: 2000,
-          });
+          if (lesson.type === "video") {
+            const progressToSave =
+              lesson.id === currentLesson?.id && duration > 0
+                ? Math.round((currentTime / duration) * 100)
+                : 100;
 
-          // Update completed materials state if progress is 100%
-          if (progressToSave === 100) {
-            setCompletedMaterials((prev) => new Set(prev).add(lesson.title));
-          }
+            showToast({
+              type: "success",
+              title: "進捗を保存しました",
+              message: `「${lesson.title}」の進捗: ${progressToSave}%`,
+              duration: 2000,
+            });
 
-          // Update progress map
-          setAllVideoProgress((prev) => {
-            const newMap = new Map(prev);
-            newMap.set(lesson.title, progressToSave);
-            return newMap;
-          });
-
-          // Check exam eligibility if this was a completion (100% progress)
-          if (progressToSave === 100) {
-            try {
-              const eligibilityResult = await checkExamEligibility({}).unwrap();
-              if (eligibilityResult.examEligible) {
-                showToast({
-                  type: "success",
-                  title: "試験資格取得！",
-                  message:
-                    "すべてのコースが完了しました。試験ルームで試験を受けることができます。",
-                  duration: 5000,
-                });
-              }
-            } catch (eligibilityError) {
-              console.error(
-                "Error checking exam eligibility:",
-                eligibilityError
-              );
-              // Don't show error toast for eligibility check failure
+            // Update completed materials state if progress is 100%
+            if (progressToSave === 100) {
+              setCompletedMaterials((prev) => new Set(prev).add(lesson.title));
             }
+
+            // Update progress map for videos
+            setAllVideoProgress((prev) => {
+              const newMap = new Map(prev);
+              newMap.set(lesson.title, progressToSave);
+              return newMap;
+            });
+
+            // Check exam eligibility if this was a completion (100% progress)
+            if (progressToSave === 100) {
+              try {
+                const eligibilityResult = await checkExamEligibility({}).unwrap();
+                if (eligibilityResult.examEligible) {
+                  showToast({
+                    type: "success",
+                    title: "試験資格取得！",
+                    message:
+                      "すべてのコースが完了しました。試験ルームで試験を受けることができます。",
+                    duration: 5000,
+                  });
+                }
+              } catch (eligibilityError) {
+                console.error(
+                  "Error checking exam eligibility:",
+                  eligibilityError
+                );
+                // Don't show error toast for eligibility check failure
+              }
+            }
+          } else {
+            // For documents: just mark as completed
+            showToast({
+              type: "success",
+              title: "完了しました",
+              message: `「${lesson.title}」を完了として記録しました`,
+              duration: 2000,
+            });
+
+            // Mark document as completed
+            setCompletedMaterials((prev) => new Set(prev).add(lesson.title));
           }
         }
       }
@@ -373,25 +463,32 @@ export const CourseLearning: React.FC = () => {
   };
 
   // Calculate detailed progress statistics
-  const completedVideos = completedMaterials.size;
-  const totalVideos = lessons.length;
+  const completedVideos = useMemo(() => {
+    return videoLessons.filter((lesson) =>
+      completedMaterials.has(lesson.title)
+    ).length;
+  }, [videoLessons, completedMaterials]);
+
+  const totalVideos = videoLessons.length;
+  const totalDocuments = documentLessons.length;
   const uncompletedVideos = totalVideos - completedVideos;
-  const completionRate =
+  
+  const videoCompletionRate =
     totalVideos > 0 ? Math.round((completedVideos / totalVideos) * 100) : 0;
 
-  // Calculate actual progress rate from all video progress data
+  // Calculate actual progress rate from video progress data only (exclude documents)
   const calculateActualProgressRate = () => {
-    if (totalVideos === 0) return 0;
+    if (videoLessons.length === 0) return 0;
 
-    // Calculate total progress from all videos
+    // Calculate total progress from videos only
     let totalProgress = 0;
-    lessons.forEach((lesson) => {
+    videoLessons.forEach((lesson) => {
       const videoProgress = allVideoProgress.get(lesson.title) || 0;
       totalProgress += videoProgress;
     });
 
-    // Return average progress across all videos
-    return Math.round(totalProgress / totalVideos);
+    // Return average progress across videos only
+    return Math.round(totalProgress / videoLessons.length);
   };
 
   const progressRate = calculateActualProgressRate();
@@ -487,53 +584,55 @@ export const CourseLearning: React.FC = () => {
                 {courseName}
               </h1>
 
-              {/* Detailed Progress Statistics */}
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <div className="text-xs text-gray-500 uppercase tracking-wide">
-                    総レッスン数
+              {/* Detailed Progress Statistics - Only show for video tab */}
+              {activeTab === "video" && (
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <div className="text-xs text-gray-500 uppercase tracking-wide">
+                      総レッスン数
+                    </div>
+                    <div className="text-lg font-semibold text-gray-900">
+                      {totalVideos}
+                    </div>
                   </div>
-                  <div className="text-lg font-semibold text-gray-900">
-                    {totalVideos}
-                  </div>
-                </div>
 
-                <div className="bg-green-50 rounded-lg p-3">
-                  <div className="text-xs text-green-600 uppercase tracking-wide">
-                    完了数
+                  <div className="bg-green-50 rounded-lg p-3">
+                    <div className="text-xs text-green-600 uppercase tracking-wide">
+                      完了数
+                    </div>
+                    <div className="text-lg font-semibold text-green-700">
+                      {completedVideos}
+                    </div>
                   </div>
-                  <div className="text-lg font-semibold text-green-700">
-                    {completedVideos}
-                  </div>
-                </div>
 
-                <div className="bg-orange-50 rounded-lg p-3">
-                  <div className="text-xs text-orange-600 uppercase tracking-wide">
-                    未完了数
+                  <div className="bg-orange-50 rounded-lg p-3">
+                    <div className="text-xs text-orange-600 uppercase tracking-wide">
+                      未完了数
+                    </div>
+                    <div className="text-lg font-semibold text-orange-700">
+                      {uncompletedVideos}
+                    </div>
                   </div>
-                  <div className="text-lg font-semibold text-orange-700">
-                    {uncompletedVideos}
-                  </div>
-                </div>
 
-                <div className="bg-blue-50 rounded-lg p-3">
-                  <div className="text-xs text-blue-600 uppercase tracking-wide">
-                    完了率
+                  <div className="bg-blue-50 rounded-lg p-3">
+                    <div className="text-xs text-blue-600 uppercase tracking-wide">
+                      動画完了率
+                    </div>
+                    <div className="text-lg font-semibold text-blue-700">
+                      {videoCompletionRate}%
+                    </div>
                   </div>
-                  <div className="text-lg font-semibold text-blue-700">
-                    {completionRate}%
-                  </div>
-                </div>
 
-                <div className="bg-purple-50 rounded-lg p-3">
-                  <div className="text-xs text-purple-600 uppercase tracking-wide">
-                    進捗率
-                  </div>
-                  <div className="text-lg font-semibold text-purple-700">
-                    {progressRate}%
+                  <div className="bg-purple-50 rounded-lg p-3">
+                    <div className="text-xs text-purple-600 uppercase tracking-wide">
+                      進捗率
+                    </div>
+                    <div className="text-lg font-semibold text-purple-700">
+                      {progressRate}%
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -542,48 +641,58 @@ export const CourseLearning: React.FC = () => {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Video Player - Left Section (2/3 width) */}
+          {/* Player - Left Section (2/3 width) */}
           <div className="lg:col-span-2">
             <div className="bg-black rounded-lg overflow-hidden">
-              {/* Video Container */}
+              {/* Media Container */}
               <div className="relative bg-black">
-                <video
-                  ref={videoRef}
-                  className="w-full h-96 lg:h-[500px] object-cover cursor-pointer"
-                  poster="/img/video-poster.jpg"
-                  onTimeUpdate={handleTimeUpdate}
-                  onLoadedMetadata={handleLoadedMetadata}
-                  onEnded={() => setIsPlaying(false)}
-                  onClick={handleVideoClick}
-                  onError={(e) => {
-                    console.error("Video error:", e);
-                    showToast({
-                      type: "error",
-                      title: "動画エラー",
-                      message:
-                        "動画の読み込みに失敗しました。URLを確認してください。",
-                    });
-                  }}
-                >
-                  <source src={currentLesson.videoUrl} type="video/mp4" />
-                  お使いのブラウザは動画をサポートしていません。
-                </video>
+                {currentLesson.type === "video" ? (
+                  <video
+                    ref={videoRef}
+                    className="w-full h-96 lg:h-[500px] object-cover cursor-pointer"
+                    poster="/img/video-poster.jpg"
+                    onTimeUpdate={handleTimeUpdate}
+                    onLoadedMetadata={handleLoadedMetadata}
+                    onEnded={() => setIsPlaying(false)}
+                    onClick={handleVideoClick}
+                    onError={(e) => {
+                      console.error("Video error:", e);
+                      showToast({
+                        type: "error",
+                        title: "動画エラー",
+                        message: "動画の読み込みに失敗しました。URLを確認してください。",
+                      });
+                    }}
+                  >
+                    <source src={currentLesson.videoUrl} type="video/mp4" />
+                    お使いのブラウザは動画をサポートしていません。
+                  </video>
+                ) : (
+                  <iframe
+                    className="w-full h-[600px] lg:h-[700px] bg-white"
+                    src={`${currentLesson.pdfUrl}#toolbar=1&navpanes=0&scrollbar=1`}
+                    title={currentLesson.title}
+                  />
+                )}
 
                 {/* Video Overlay - Red Play Button */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  {!isPlaying && (
-                    <button
-                      onClick={togglePlayPause}
-                      className="bg-red-500 hover:bg-red-600 rounded-full p-6 transition-all duration-200 shadow-lg cursor-pointer"
-                    >
-                      <Play className="w-12 h-12 text-white ml-1" />
-                    </button>
-                  )}
-                </div>
+                {currentLesson.type === "video" && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    {!isPlaying && (
+                      <button
+                        onClick={togglePlayPause}
+                        className="bg-red-500 hover:bg-red-600 rounded-full p-6 transition-all duration-200 shadow-lg cursor-pointer"
+                      >
+                        <Play className="w-12 h-12 text-white ml-1" />
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
-              {/* Video Controls - Dark Grey Bar */}
-              <div className="bg-gray-800 text-white p-3">
+              {/* Controls - only for video */}
+              {currentLesson.type === "video" && (
+                <div className="bg-gray-800 text-white p-3">
                 <div className="flex flex-row items-start  gap-3">
                   {/* Play/Pause Button */}
                   <button
@@ -690,92 +799,171 @@ export const CourseLearning: React.FC = () => {
                     <Maximize className="w-5 h-5" />
                   </button>
                 </div>
-              </div>
+                </div>
+              )}
             </div>
 
-            {/* Instructions Section */}
-            <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-sm font-bold">!</span>
+            {/* Instructions Section - Only show for video tab */}
+            {activeTab === "video" && (
+              <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0">
+                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                      <span className="text-white text-sm font-bold">!</span>
+                    </div>
                   </div>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-blue-900 mb-2">
-                    重要なお知らせ
-                  </h3>
-                  <div className="text-sm text-blue-800 space-y-2">
-                    <p>
-                      <strong>
-                        動画視聴後は必ず「完了」ボタンを押してください。
-                      </strong>
-                    </p>
-                    <p>
-                      各動画の右上にある「完了」ボタンを押さないと、進捗率が更新されません。
-                    </p>
-                    <p className="text-blue-700">
-                      ※
-                      進捗は手動で保存する必要があります。動画を視聴するだけでは自動的に保存されません。
-                    </p>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                      重要なお知らせ
+                    </h3>
+                    <div className="text-sm text-blue-800 space-y-2">
+                      <p>
+                        <strong>
+                          動画視聴後は必ず「記録」ボタンを押してください。
+                        </strong>
+                      </p>
+                      <p>
+                        各動画の右上にある「記録」ボタンを押さないと、進捗率が更新されません。
+                      </p>
+                      <p className="text-blue-700">
+                        ※
+                        進捗は手動で保存する必要があります。動画を視聴するだけでは自動的に保存されません。
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* Instructions Section for Document tab */}
+            {activeTab === "document" && (
+              <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0">
+                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                      <span className="text-white text-sm font-bold">!</span>
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                      重要なお知らせ
+                    </h3>
+                    <div className="text-sm text-blue-800 space-y-2">
+                      <p>
+                        <strong>
+                          文書を読んだ後は必ず「記録」ボタンを押してください。
+                        </strong>
+                      </p>
+                      <p>
+                        右側のリストから文書を選択して閲覧できます。読み終わったら「記録」ボタンで完了として記録します。
+                      </p>
+                      <p className="text-blue-700">
+                        ※文書の場合は進捗率は不要で、完了/未完了のみが記録されます。
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Lesson List Sidebar - Right Section (1/3 width) */}
           <div className="lg:col-span-1">
             <div className="bg-white h-full flex flex-col">
+              {/* Tabs */}
+              <div className="border-b border-gray-200 px-2 pt-2">
+                <nav className="-mb-px flex space-x-4">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("video")}
+                    className={`py-2 px-3 border-b-2 font-medium text-sm transition-colors ${
+                      activeTab === "video"
+                        ? "border-red-500 text-red-600"
+                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    }`}
+                  >
+                    動画 ({totalVideos})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("document")}
+                    className={`py-2 px-3 border-b-2 font-medium text-sm transition-colors ${
+                      activeTab === "document"
+                        ? "border-red-500 text-red-600"
+                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    }`}
+                  >
+                    文書 ({totalDocuments})
+                  </button>
+                </nav>
+              </div>
               {/* Fixed height container with scroll */}
               <div className="flex-1 overflow-y-auto max-h-[560px] pt-2 pr-2">
-                <div className="space-y-4">
-                  {lessons.map((lesson) => (
-                    <div
-                      key={lesson.id}
-                      className={`w-full relative hover:bg-gray-50 transition-colors ${
-                        currentLesson.id === lesson.id
-                          ? "bg-blue-50 border-l-4 border-l-blue-500"
-                          : ""
-                      }`}
-                    >
-                      {/* Checkmark for completed lectures */}
-                      {completedMaterials.has(lesson.title) && (
-                        // <div className="absolute top-2 left-2 z-10 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                {filteredLessons.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center p-4">
+                    <BookOpen className="w-12 h-12 text-gray-400 mb-2" />
+                    <p className="text-gray-600 text-sm">
+                      {activeTab === "video"
+                        ? "動画教材がありません"
+                        : "文書教材がありません"}
+                    </p>
+                  </div>
+                ) : (
+                  <div className={activeTab === "document" ? "space-y-2" : "space-y-4"}>
+                    {filteredLessons.map((lesson) => (
+                      <div
+                        key={lesson.id}
+                        className={`w-full relative hover:bg-gray-50 transition-colors ${
+                          currentLesson.id === lesson.id
+                            ? "bg-blue-50 border-l-4 border-l-blue-500"
+                            : ""
+                        } ${activeTab === "document" ? "p-1.5" : "p-2"}`}
+                      >
+                      {/* Checkmark for completed lectures - only for videos */}
+                      {lesson.type === "video" && completedMaterials.has(lesson.title) && (
                         <Check className="w-7 h-7 absolute -top-0.5 left-0 text-emerald-400 z-10" />
-                        // </div>
                       )}
                       <div
-                        className="p-2 cursor-pointer"
+                        className="cursor-pointer"
                         onClick={() => handleLessonSelect(lesson)}
                       >
-                        <div className="flex items-start space-x-3">
-                          {/* Video Thumbnail */}
+                        <div className={`flex items-start ${activeTab === "document" ? "space-x-2" : "space-x-3"}`}>
+                          {/* Thumbnail/Icon */}
                           <div className="flex-shrink-0">
-                            <div className="relative w-32 h-20 bg-black rounded flex items-center justify-center">
-                              {/* Red play button in center */}
-                              <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
-                                <Play className="w-3 h-3 text-white ml-0.5" />
+                            {lesson.type === "video" ? (
+                              <div className="relative w-32 h-20 bg-black rounded flex items-center justify-center">
+                                {/* Red play button in center */}
+                                <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                                  <Play className="w-3 h-3 text-white ml-0.5" />
+                                </div>
+                                {/* Red progress line at bottom */}
+                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-500"></div>
                               </div>
-                              {/* Red progress line at bottom */}
-                              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-500"></div>
-                            </div>
+                            ) : (
+                              <div className={`relative ${activeTab === "document" ? "w-16 h-12" : "w-32 h-20"} bg-gray-100 rounded flex items-center justify-center border-2 border-gray-300`}>
+                                {/* Document icon */}
+                                <FileText className={`${activeTab === "document" ? "w-5 h-5" : "w-8 h-8"} text-gray-600`} />
+                              </div>
+                            )}
                           </div>
 
                           {/* Content Section */}
                           <div className="flex-1 min-w-0">
                             {/* Top Section: Title/Subtitle and Record Button */}
-                            <div className="flex items-start justify-between mb-2">
+                            <div className={`flex items-start justify-between ${activeTab === "document" ? "mb-1" : "mb-2"}`}>
                               <div className="flex-1 min-w-0">
-                                <h4 className="text-sm font-medium text-gray-900 leading-tight truncate">
+                                <h4 className={`${activeTab === "document" ? "text-xs" : "text-sm"} font-medium text-gray-900 leading-tight truncate`}>
                                   {lesson.title}
                                 </h4>
-                                <p className="text-xs text-gray-600 leading-relaxed truncate">
-                                  {lesson.description}
-                                </p>
+                                {activeTab === "video" && (
+                                  <p className="text-xs text-gray-600 leading-relaxed truncate">
+                                    {lesson.description}
+                                  </p>
+                                )}
                               </div>
                               <div className="flex-shrink-0 ml-3">
-                                {currentLesson.id === lesson.id && (
+                                {/* Record button - only for videos */}
+                                {lesson.type === "video" && currentLesson.id === lesson.id && (
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -793,51 +981,54 @@ export const CourseLearning: React.FC = () => {
                               </div>
                             </div>
 
-                            {/* Bottom Section: Time/Rate and Progress Bar */}
-                            <div className="space-y-1">
-                              <div className="flex items-center justify-between text-xs text-gray-600">
-                                <span className="font-mono">
-                                  {currentLesson.id === lesson.id
-                                    ? `${formatTime(
-                                        currentTime
-                                      )} / ${formatTime(duration)}`
-                                    : `0:00 / ${formatTime(duration)}`}
-                                </span>
-                                <span className="font-medium text-gray-500">
-                                  {allVideoProgress.get(lesson.title) || 0}% /{" "}
-                                  {currentLesson.id === lesson.id
-                                    ? duration > 0
-                                      ? Math.round(
-                                          (currentTime / duration) * 100
-                                        )
-                                      : 0
-                                    : 0}
-                                  %
-                                </span>
-                              </div>
-
-                              {/* Progress bar - Full width container */}
-                              <div className="w-full bg-gray-200 rounded-full h-1">
-                                <div
-                                  className="bg-red-500 h-1 rounded-full transition-all"
-                                  style={{
-                                    width: `${
-                                      currentLesson.id === lesson.id
-                                        ? duration > 0
-                                          ? (currentTime / duration) * 100
-                                          : 0
+                            {/* Bottom Section: Time/Rate and Progress Bar - only for videos */}
+                            {lesson.type === "video" && (
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between text-xs text-gray-600">
+                                  <span className="font-mono">
+                                    {currentLesson.id === lesson.id
+                                      ? `${formatTime(
+                                          currentTime
+                                        )} / ${formatTime(duration)}`
+                                      : `0:00 / ${formatTime(duration)}`}
+                                  </span>
+                                  <span className="font-medium text-gray-500">
+                                    {allVideoProgress.get(lesson.title) || 0}% /{" "}
+                                    {currentLesson.id === lesson.id
+                                      ? duration > 0
+                                        ? Math.round(
+                                            (currentTime / duration) * 100
+                                          )
                                         : 0
-                                    }%`,
-                                  }}
-                                ></div>
+                                      : 0}
+                                    %
+                                  </span>
+                                </div>
+
+                                {/* Progress bar - Full width container */}
+                                <div className="w-full bg-gray-200 rounded-full h-1">
+                                  <div
+                                    className="bg-red-500 h-1 rounded-full transition-all"
+                                    style={{
+                                      width: `${
+                                        currentLesson.id === lesson.id
+                                          ? duration > 0
+                                            ? (currentTime / duration) * 100
+                                            : 0
+                                          : 0
+                                      }%`,
+                                    }}
+                                  ></div>
+                                </div>
                               </div>
-                            </div>
+                            )}
                           </div>
                         </div>
                       </div>
                     </div>
                   ))}
-                </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -849,19 +1040,28 @@ export const CourseLearning: React.FC = () => {
         isOpen={showConfirmModal}
         onClose={handleCancelRecord}
         onConfirm={handleConfirmRecord}
-        title="進捗を記録しますか？"
+        title={
+          lessonToComplete?.type === "pdf"
+            ? "完了として記録しますか？"
+            : "進捗を記録しますか？"
+        }
         message={
           <div>
             <p className="mb-2">
-              「{lessonToComplete?.title}」の進捗を記録しますか？
+              「{lessonToComplete?.title}」
+              {lessonToComplete?.type === "pdf"
+                ? "を完了として記録しますか？"
+                : "の進捗を記録しますか？"}
             </p>
-            <p className="text-sm text-gray-600">
-              現在の視聴進捗:{" "}
-              {lessonToComplete && duration > 0
-                ? Math.round((currentTime / duration) * 100)
-                : 0}
-              %
-            </p>
+            {lessonToComplete?.type === "video" && (
+              <p className="text-sm text-gray-600">
+                現在の視聴進捗:{" "}
+                {lessonToComplete && duration > 0
+                  ? Math.round((currentTime / duration) * 100)
+                  : 0}
+                %
+              </p>
+            )}
           </div>
         }
         confirmText="記録する"

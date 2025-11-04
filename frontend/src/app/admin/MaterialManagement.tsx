@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Upload,
   Video,
+  FileText,
   Save,
   X,
   AlertCircle,
@@ -13,8 +14,6 @@ import {
   Eye,
   Search,
   Plus,
-  ChevronUp,
-  ChevronDown,
 } from "lucide-react";
 import { useToast } from "../../hooks/useToast";
 import { BossLayout } from "../../components/layout/AdminLayout";
@@ -25,13 +24,14 @@ import {
 import { ConfirmModal } from "../../components/atom/ConfirmModal";
 
 interface Material {
+  type: "video" | "pdf";
   id: string;
   title: string;
   description: string;
   courseId: string;
   courseName: string;
-  tags?: string | number | null;
-  videoUrl: string;
+  videoUrl?: string;
+  pdfUrl?: string;
   uploadedBy: string;
   createdAt: string;
   updatedAt: string;
@@ -44,7 +44,6 @@ interface MaterialFormData {
   description: string;
   courseId: string;
   courseName: string;
-  tags: string;
 }
 
 interface MaterialErrors {
@@ -68,14 +67,7 @@ export const MaterialManagement: React.FC = () => {
   const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Helper function to safely handle tags
-  const getTagsArray = (tags: string | number | null | undefined): string[] => {
-    if (!tags || typeof tags !== "string") return [];
-    return tags
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter((tag) => tag.length > 0);
-  };
+  // Tags removed
 
   // State management
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -99,12 +91,13 @@ export const MaterialManagement: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  type MaterialType = "video" | "pdf";
+  const [materialType, setMaterialType] = useState<MaterialType>("video");
   const [formData, setFormData] = useState<MaterialFormData>({
     title: "",
     description: "",
     courseId: "",
     courseName: "",
-    tags: "",
   });
   const [errors, setErrors] = useState<MaterialErrors>({});
 
@@ -125,11 +118,38 @@ export const MaterialManagement: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         // Transform _id to id for frontend compatibility
-        const transformedMaterials =
-          data.materials?.map((material: Material & { _id?: string }) => ({
-            ...material,
-            id: material._id || material.id,
-          })) || [];
+        const transformedMaterials: Material[] =
+          data.materials?.map(
+            (material: {
+              _id?: string;
+              id?: string;
+              type: string;
+              title: string;
+              description: string;
+              courseId: string;
+              courseName: string;
+              videoUrl?: string;
+              pdfUrl?: string;
+              uploadedBy: string;
+              createdAt: string;
+              updatedAt: string;
+              duration?: string;
+              order?: number;
+            }) => ({
+              id: material._id || material.id,
+              type: material.type === "pdf" ? "pdf" : "video",
+              title: material.title,
+              description: material.description,
+              courseId: material.courseId,
+              courseName: material.courseName,
+              videoUrl: material.videoUrl,
+              uploadedBy: material.uploadedBy,
+              createdAt: material.createdAt,
+              updatedAt: material.updatedAt,
+              duration: material.duration,
+              order: material.order,
+            })
+          ) || [];
         // Sort by order field
         const sortedMaterials = transformedMaterials.sort(
           (a: Material, b: Material) => a.order - b.order
@@ -159,10 +179,7 @@ export const MaterialManagement: React.FC = () => {
     const filtered = materials.filter((material) => {
       const matchesSearch =
         material.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        material.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        getTagsArray(material.tags).some((tag) =>
-          tag.toLowerCase().includes(searchTerm.toLowerCase())
-        );
+        material.description.toLowerCase().includes(searchTerm.toLowerCase());
 
       return matchesSearch;
     });
@@ -207,17 +224,6 @@ export const MaterialManagement: React.FC = () => {
     }
   };
 
-  const getSortIcon = (field: keyof Material) => {
-    if (sortField !== field) {
-      return <div className="w-4 h-4" />;
-    }
-    return sortDirection === "asc" ? (
-      <ChevronUp className="w-4 h-4" />
-    ) : (
-      <ChevronDown className="w-4 h-4" />
-    );
-  };
-
   // Material actions
   const handleDetail = (material: Material) => {
     setSelectedMaterial(material);
@@ -231,11 +237,46 @@ export const MaterialManagement: React.FC = () => {
       description: material.description,
       courseId: material.courseId,
       courseName: material.courseName,
-      tags: typeof material.tags === "string" ? material.tags : "",
     });
     setSelectedFile(null);
     setErrors({});
     setShowEditModal(true);
+  };
+
+  // Type adapter for ViewMaterialModal compatibility
+  const handleEditForModal = (material: {
+    type: "video" | "pdf";
+    id?: string;
+    _id?: string;
+    title: string;
+    description: string;
+    courseId: string;
+    courseName: string;
+    videoUrl?: string;
+    pdfUrl?: string;
+    uploadedBy: string;
+    createdAt: string;
+    updatedAt: string;
+    duration?: string;
+    order?: number;
+  }) => {
+    // Convert ViewMaterialModal Material format to MaterialManagement Material format
+    const convertedMaterial: Material = {
+      type: material.type,
+      id: material.id || material._id || "",
+      title: material.title,
+      description: material.description,
+      courseId: material.courseId,
+      courseName: material.courseName,
+      videoUrl: material.videoUrl,
+      pdfUrl: material.pdfUrl,
+      uploadedBy: material.uploadedBy,
+      createdAt: material.createdAt,
+      updatedAt: material.updatedAt,
+      duration: material.duration,
+      order: material.order || 0,
+    };
+    handleEdit(convertedMaterial);
   };
 
   const handleDelete = (material: Material) => {
@@ -310,43 +351,65 @@ export const MaterialManagement: React.FC = () => {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Validate file type - explicitly check for supported video formats
-      const allowedMimeTypes = [
-        "video/mp4",
-        "video/avi",
-        "video/x-msvideo", // Alternative AVI MIME type
-        "video/quicktime", // MOV files
-        "video/x-ms-wmv", // WMV files
-        "video/webm",
-        "video/ogg",
-      ];
-
-      const fileExtension = file.name.toLowerCase().split(".").pop();
-      const allowedExtensions = ["mp4", "avi", "mov", "wmv", "webm", "ogg"];
-
-      if (
-        !file.type.startsWith("video/") &&
-        !allowedMimeTypes.includes(file.type) &&
-        !allowedExtensions.includes(fileExtension || "")
-      ) {
-        showToast({
-          type: "error",
-          title: "ファイル形式エラー",
-          message:
-            "サポートされている動画形式を選択してください。対応形式: MP4, AVI, MOV, WMV, WebM, OGG",
-        });
-        return;
+      let isValid = true;
+      if (materialType === "video") {
+        const allowedMimeTypes = [
+          "video/mp4",
+          "video/avi",
+          "video/x-msvideo",
+          "video/quicktime",
+          "video/x-ms-wmv",
+          "video/webm",
+          "video/ogg",
+        ];
+        const fileExtension = file.name.toLowerCase().split(".").pop();
+        const allowedExtensions = ["mp4", "avi", "mov", "wmv", "webm", "ogg"];
+        if (
+          !file.type.startsWith("video/") &&
+          !allowedMimeTypes.includes(file.type) &&
+          !allowedExtensions.includes(fileExtension || "")
+        ) {
+          isValid = false;
+          showToast({
+            type: "error",
+            title: "ファイル形式エラー",
+            message:
+              "サポートされている動画形式を選択してください。対応形式: MP4, AVI, MOV, WMV, WebM, OGG",
+          });
+        }
+        const maxSize = 100 * 1024 * 1024;
+        if (file.size > maxSize) {
+          isValid = false;
+          showToast({
+            type: "error",
+            title: "ファイルサイズエラー",
+            message: "動画の最大サイズは100MBです。",
+          });
+        }
+      } else {
+        if (
+          file.type !== "application/pdf" &&
+          !file.name.toLowerCase().endsWith(".pdf")
+        ) {
+          isValid = false;
+          showToast({
+            type: "error",
+            title: "ファイル形式エラー",
+            message: "PDFファイルを選択してください。",
+          });
+        }
+        const maxSize = 50 * 1024 * 1024;
+        if (file.size > maxSize) {
+          isValid = false;
+          showToast({
+            type: "error",
+            title: "ファイルサイズエラー",
+            message: "PDFの最大サイズは50MBです。",
+          });
+        }
       }
 
-      const maxSize = 100 * 1024 * 1024; // 100MB
-      if (file.size > maxSize) {
-        showToast({
-          type: "error",
-          title: "ファイルサイズエラー",
-          message: "ファイルサイズは100MB以下にしてください。",
-        });
-        return;
-      }
+      if (!isValid) return;
 
       setSelectedFile(file);
       setErrors({ ...errors, video: undefined });
@@ -422,7 +485,6 @@ export const MaterialManagement: React.FC = () => {
       submitData.append("description", formData.description.trim());
       submitData.append("courseId", formData.courseId);
       submitData.append("courseName", formData.courseName);
-      submitData.append("tags", formData.tags);
 
       const user = JSON.parse(localStorage.getItem("user") || "{}");
       submitData.append("uploadedBy", user.username || user.email || "admin");
@@ -439,7 +501,11 @@ export const MaterialManagement: React.FC = () => {
 
       const API_URL =
         import.meta.env.VITE_API_URL || "http://85.131.238.90:4000";
-      const response = await fetch(`${API_URL}/api/materials/upload`, {
+      const endpoint =
+        materialType === "video"
+          ? `${API_URL}/api/materials/upload`
+          : `${API_URL}/api/materials/upload-pdf`;
+      const response = await fetch(endpoint, {
         method: "POST",
         body: submitData,
       });
@@ -467,8 +533,8 @@ export const MaterialManagement: React.FC = () => {
           description: "",
           courseId: "",
           courseName: "",
-          tags: "",
         });
+        setMaterialType("video");
         setErrors({});
         setShowUploadModal(false);
         if (fileInputRef.current) {
@@ -550,7 +616,6 @@ export const MaterialManagement: React.FC = () => {
           description: "",
           courseId: "",
           courseName: "",
-          tags: "",
         });
         setErrors({});
         setShowEditModal(false);
@@ -674,34 +739,34 @@ export const MaterialManagement: React.FC = () => {
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-800">
+                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-800">
                     番号
                   </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-800">
+                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-800">
                     <button
                       onClick={() => handleSort("title")}
-                      className="flex items-center space-x-1 hover:text-orange-600 transition-colors cursor-pointer"
+                      className="inline-block hover:text-orange-600 transition-colors cursor-pointer truncate"
                     >
-                      <span>教材情報</span>
-                      {getSortIcon("title")}
+                      教材情報
                     </button>
                   </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-800">
+                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-800">
+                    種別
+                  </th>
+                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-800">
                     <button
                       onClick={() => handleSort("courseName")}
-                      className="flex items-center space-x-1 hover:text-orange-600 transition-colors cursor-pointer"
+                      className="inline-block hover:text-orange-600 transition-colors cursor-pointer"
                     >
-                      <span>コース</span>
-                      {getSortIcon("courseName")}
+                      コース
                     </button>
                   </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-800">
+                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-800">
                     <button
                       onClick={() => handleSort("createdAt")}
-                      className="flex items-center space-x-1 hover:text-orange-600 transition-colors cursor-pointer"
+                      className="inline-block hover:text-orange-600 transition-colors cursor-pointer"
                     >
-                      <span>作成日</span>
-                      {getSortIcon("createdAt")}
+                      作成日
                     </button>
                   </th>
                   <th className="px-6 py-4 text-center text-sm font-semibold text-slate-800">
@@ -712,17 +777,27 @@ export const MaterialManagement: React.FC = () => {
               <tbody className="divide-y divide-slate-200">
                 {filteredAndSortedMaterials.map((material) => (
                   <tr key={material.id} className="hover:bg-slate-50">
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 text-center">
                       <span className="text-sm font-medium text-slate-600">
                         {filteredAndSortedMaterials.indexOf(material) + 1}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                          <Video className="w-6 h-6 text-orange-600" />
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex items-center justify-center space-x-3">
+                        <div
+                          className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                            material.type === "pdf"
+                              ? "bg-purple-100"
+                              : "bg-orange-100"
+                          }`}
+                        >
+                          {material.type === "pdf" ? (
+                            <FileText className="w-6 h-6 text-purple-600" />
+                          ) : (
+                            <Video className="w-6 h-6 text-orange-600" />
+                          )}
                         </div>
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 text-center">
                           <div className="font-medium text-slate-800 truncate">
                             {material.title}
                           </div>
@@ -732,12 +807,23 @@ export const MaterialManagement: React.FC = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 text-center">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          material.type === "pdf"
+                            ? "bg-purple-100 text-purple-800"
+                            : "bg-emerald-100 text-emerald-700"
+                        }`}
+                      >
+                        {material.type === "pdf" ? "文書" : "動画"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                         {material.courseName}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-600">
+                    <td className="px-6 py-4 text-center text-sm text-slate-600">
                       {formatDate(material.createdAt)}
                     </td>
                     <td className="px-6 py-4">
@@ -802,10 +888,41 @@ export const MaterialManagement: React.FC = () => {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Video Upload Section */}
+                {/* Type & File Upload Section */}
                 <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      ファイル種別 *
+                    </label>
+                    <div className="inline-flex items-center rounded-lg border border-gray-300 overflow-hidden shadow-sm">
+                      <button
+                        type="button"
+                        onClick={() => setMaterialType("video")}
+                        className={`${
+                          materialType === "video"
+                            ? "bg-orange-600 text-white"
+                            : "bg-white text-slate-700 hover:bg-slate-50"
+                        } px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer`}
+                        aria-pressed={materialType === "video"}
+                      >
+                        動画
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMaterialType("pdf")}
+                        className={`${
+                          materialType === "pdf"
+                            ? "bg-orange-600 text-white"
+                            : "bg-white text-slate-700 hover:bg-slate-50"
+                        } px-3 py-1.5 text-sm font-medium border-l border-gray-300 transition-colors cursor-pointer`}
+                        aria-pressed={materialType === "pdf"}
+                      >
+                        PDF
+                      </button>
+                    </div>
+                  </div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    動画ファイル *
+                    ファイル *
                   </label>
 
                   {!selectedFile ? (
@@ -815,13 +932,15 @@ export const MaterialManagement: React.FC = () => {
                     >
                       <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                       <p className="text-lg font-medium text-gray-600 mb-2">
-                        動画ファイルを選択
+                        ファイルを選択
                       </p>
                       <p className="text-sm text-gray-500">
                         クリックしてファイルを選択するか、ドラッグ&ドロップしてください
                       </p>
                       <p className="text-xs text-gray-400 mt-2">
-                        対応形式: MP4, AVI, MOV, WMV (最大100MB)
+                        {materialType === "video"
+                          ? "対応形式: MP4, AVI, MOV, WMV, WebM, OGG (最大100MB)"
+                          : "対応形式: PDF (最大50MB)"}
                       </p>
                     </div>
                   ) : (
@@ -852,7 +971,11 @@ export const MaterialManagement: React.FC = () => {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="video/mp4,video/avi,video/x-msvideo,video/quicktime,video/x-ms-wmv,video/webm,video/ogg,.mp4,.avi,.mov,.wmv,.webm,.ogg"
+                    accept={
+                      materialType === "video"
+                        ? "video/mp4,video/avi,video/x-msvideo,video/quicktime,video/x-ms-wmv,video/webm,video/ogg,.mp4,.avi,.mov,.wmv,.webm,.ogg"
+                        : "application/pdf,.pdf"
+                    }
                     onChange={handleFileSelect}
                     className="hidden"
                   />
@@ -936,20 +1059,7 @@ export const MaterialManagement: React.FC = () => {
                     </select>
                   </div>
 
-                  {/* Tags */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      タグ
-                    </label>
-                    <input
-                      type="text"
-                      name="tags"
-                      value={formData.tags}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      placeholder="タグをカンマ区切りで入力 (例: 基礎, 文法, 会話)"
-                    />
-                  </div>
+                  {/* Tags removed */}
                 </div>
 
                 {/* Upload Progress */}
@@ -1058,7 +1168,7 @@ export const MaterialManagement: React.FC = () => {
         <ViewMaterialModal
           isOpen={showDetailModal}
           onClose={() => setShowDetailModal(false)}
-          onEdit={handleEdit}
+          onEdit={handleEditForModal}
           material={selectedMaterial}
         />
       </div>

@@ -86,10 +86,10 @@ export const Select: React.FC<SelectProps> = ({
   const currentTheme = themeColors[theme];
 
   // Adjust padding and border radius based on theme - slate theme has reduced height
-  const paddingClasses = theme === "slate" ? "py-3" : "py-4";
-  const borderRadius = theme === "slate" ? "rounded-lg" : "rounded-xl";
+  const paddingClasses = theme === "slate" ? "py-3" : "py-2";
+  const borderRadius = theme === "slate" ? "rounded-lg" : "rounded-lg";
 
-  const baseClasses = `block w-full pl-12 pr-12 ${paddingClasses} border border-gray-300 ${borderRadius} text-gray-900 focus:outline-none focus:ring-2 transition-all duration-200 text-base cursor-pointer bg-white ${currentTheme.ring} ${currentTheme.hover}`;
+  const baseClasses = `block w-full pl-12 pr-12 ${paddingClasses} border border-gray-300 ${borderRadius} text-gray-900 focus:outline-none focus:ring-2 transition-all duration-200 text-base bg-white cursor-pointer ${currentTheme.ring} ${currentTheme.hover}`;
 
   const errorClasses = error
     ? "border-red-300 focus:ring-red-500 focus:border-red-500 hover:border-red-300"
@@ -111,7 +111,7 @@ export const Select: React.FC<SelectProps> = ({
 
       <button
         type="button"
-        className={classes}
+        className={`${classes} cursor-pointer`}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
       >
@@ -146,7 +146,7 @@ export const Select: React.FC<SelectProps> = ({
               <button
                 key={option.value}
                 type="button"
-                className={`w-full px-4 ${optionPadding} text-left ${
+                className={`w-full px-4 ${optionPadding} text-left cursor-pointer ${
                   currentTheme.optionHover
                 } transition-colors duration-150 flex items-center justify-between ${
                   selectedValue === option.value

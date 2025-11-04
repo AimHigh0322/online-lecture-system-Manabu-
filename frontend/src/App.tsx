@@ -14,12 +14,12 @@ import ExamQuestionManagement from "./app/admin/ExamQuestionManagement";
 import ExamQuestionForm from "./app/admin/ExamQuestionForm";
 import ExamManagement from "./app/admin/ExamManagement";
 import ExamSettings from "./app/admin/ExamSettings";
-import TextToPdf from "./app/admin/TextToPdf";
 import CertificateGenerator from "./app/admin/CertificateGenerator";
 import ExamRoom from "./app/student/ExamRoom";
 import ExamTaking from "./app/student/ExamTaking";
 import ExamResults from "./app/student/ExamResults";
 import ExamReview from "./app/student/ExamReview";
+import Contact from "./app/contact/Contact";
 import { StudentLayout } from "./components/layout/StudentLayout";
 import { AdminRoute, StudentRoute } from "./components/auth/ProtectedRoute";
 import "./App.css";
@@ -152,16 +152,6 @@ function App() {
             }
           />
 
-          {/* Text to PDF Routes */}
-          <Route
-            path="/admin/text-to-pdf"
-            element={
-              <AdminRoute>
-                <TextToPdf />
-              </AdminRoute>
-            }
-          />
-
           {/* Certificate Generator Routes */}
           <Route
             path="/admin/certificate-generator"
@@ -220,6 +210,16 @@ function App() {
               <StudentRoute>
                 <StudentLayout>
                   <ProfileManagement />
+                </StudentLayout>
+              </StudentRoute>
+            }
+          />
+          <Route
+            path="/contact"
+            element={
+              <StudentRoute>
+                <StudentLayout>
+                  <Contact />
                 </StudentLayout>
               </StudentRoute>
             }
