@@ -42,7 +42,7 @@ export const ViewMaterialModal: React.FC<ViewMaterialModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 bg-opacity-30 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/60 bg-opacity-30 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] flex flex-col">
         {/* Fixed Header */}
         <div className="flex items-center justify-between p-8 pb-0 flex-shrink-0">
@@ -79,64 +79,64 @@ export const ViewMaterialModal: React.FC<ViewMaterialModalProps> = ({
               <div className="aspect-video bg-black rounded-lg overflow-hidden relative">
                 {material.type === "video" ? (
                   <video
-                  className="w-full h-full object-contain"
-                  controls
-                  preload="metadata"
-                  onError={(e) => {
-                    console.error("Video load error:", e);
-                    const target = e.target as HTMLVideoElement;
-                    const sourceElement = target.querySelector("source");
-                    const videoUrl = sourceElement?.src;
-
-                    console.error("Failed video URL:", videoUrl);
-                    console.error("Selected material:", material);
-                    console.error(
-                      "Video URL from material:",
-                      material.videoUrl
-                    );
-                    console.error(
-                      "Current hostname:",
-                      window.location.hostname
-                    );
-                    console.error(
-                      "VITE_API_URL:",
-                      import.meta.env.VITE_API_URL
-                    );
-
-                    target.style.display = "none";
-                    const errorDiv = target.nextElementSibling as HTMLElement;
-                    if (errorDiv) errorDiv.style.display = "flex";
-                  }}
-                >
-                  <source
-                    src={`${
-                      import.meta.env.VITE_API_URL ||
-                      "http://85.131.238.90:4000"
-                    }${material.videoUrl || ""}`}
-                    type="video/mp4"
+                    className="w-full h-full object-contain"
+                    controls
+                    preload="metadata"
                     onError={(e) => {
-                      console.error("Source load error:", e);
-                      const target = e.target as HTMLSourceElement;
-                      console.error("Source URL that failed:", target.src);
+                      console.error("Video load error:", e);
+                      const target = e.target as HTMLVideoElement;
+                      const sourceElement = target.querySelector("source");
+                      const videoUrl = sourceElement?.src;
 
-                      // Test if the URL is accessible
-                      fetch(target.src, { method: "HEAD" })
-                        .then((response) => {
-                          console.log(
-                            "Video URL response:",
-                            response.status,
-                            response.statusText
-                          );
-                        })
-                        .catch((err) => {
-                          console.error("Video URL fetch error:", err);
-                        });
+                      console.error("Failed video URL:", videoUrl);
+                      console.error("Selected material:", material);
+                      console.error(
+                        "Video URL from material:",
+                        material.videoUrl
+                      );
+                      console.error(
+                        "Current hostname:",
+                        window.location.hostname
+                      );
+                      console.error(
+                        "VITE_API_URL:",
+                        import.meta.env.VITE_API_URL
+                      );
+
+                      target.style.display = "none";
+                      const errorDiv = target.nextElementSibling as HTMLElement;
+                      if (errorDiv) errorDiv.style.display = "flex";
                     }}
-                  />
-                  <p className="text-white p-4 text-center">
-                    お使いのブラウザは動画の再生をサポートしていません。
-                  </p>
-                </video>
+                  >
+                    <source
+                      src={`${
+                        import.meta.env.VITE_API_URL ||
+                        "http://85.131.238.90:4000"
+                      }${material.videoUrl || ""}`}
+                      type="video/mp4"
+                      onError={(e) => {
+                        console.error("Source load error:", e);
+                        const target = e.target as HTMLSourceElement;
+                        console.error("Source URL that failed:", target.src);
+
+                        // Test if the URL is accessible
+                        fetch(target.src, { method: "HEAD" })
+                          .then((response) => {
+                            console.log(
+                              "Video URL response:",
+                              response.status,
+                              response.statusText
+                            );
+                          })
+                          .catch((err) => {
+                            console.error("Video URL fetch error:", err);
+                          });
+                      }}
+                    />
+                    <p className="text-white p-4 text-center">
+                      お使いのブラウザは動画の再生をサポートしていません。
+                    </p>
+                  </video>
                 ) : (
                   <iframe
                     className="w-full h-full bg-white"

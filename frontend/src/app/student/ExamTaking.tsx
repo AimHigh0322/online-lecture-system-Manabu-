@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Clock, CheckCircle, Camera, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useGetQuestionsQuery } from "../../api/admin/questionApiSlice";
-import Webcam from "react-webcam";
-import { loadModels, getFaceDescriptorFromVideo } from "../../lib/face";
-import { useToast } from "../../hooks/useToast";
+import { ConfirmModal } from "../../components/atom/ConfirmModal";
 
 interface Question {
   _id: string;
@@ -42,13 +40,15 @@ interface ExamSettings {
   passingScore: number;
 }
 
+// localStorage key for saving exam answers
+const EXAM_ANSWERS_STORAGE_KEY = "exam_answers";
+
 export const ExamTaking: React.FC = () => {
   const navigate = useNavigate();
-  const { showToast } = useToast();
-  const webcamRef = useRef<Webcam>(null);
-  const faceVerificationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const location = useLocation();
   const examStartTimeRef = useRef<number | null>(null);
   const timeRemainingRef = useRef<number>(0);
+  const navigateRef = useRef(navigate);
 
   const [examData, setExamData] = useState<ExamData | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -57,20 +57,39 @@ export const ExamTaking: React.FC = () => {
   const [answers, setAnswers] = useState<{
     [key: string]: string | string[] | boolean;
   }>({});
-  const [faceVerificationStatus, setFaceVerificationStatus] = useState<{
-    isVerified: boolean;
-    message: string;
-    showMessage: boolean;
-  }>({
-    isVerified: false,
-    message: "",
-    showMessage: false,
-  });
   const [isExamStarted, setIsExamStarted] = useState(false);
-  const [isExamPaused, setIsExamPaused] = useState(false);
-  const [showReauthenticationModal, setShowReauthenticationModal] = useState(false);
-  const modalWebcamRef = useRef<Webcam>(null);
-  const [isReauthenticating, setIsReauthenticating] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showNavigationConfirm, setShowNavigationConfirm] = useState(false);
+  const pendingNavigationRef = useRef<(() => void) | null>(null);
+
+  // Update navigate ref when navigate changes
+  useEffect(() => {
+    navigateRef.current = navigate;
+  }, [navigate]);
+
+  // Load answers from localStorage on component mount
+  useEffect(() => {
+    try {
+      const savedAnswers = localStorage.getItem(EXAM_ANSWERS_STORAGE_KEY);
+      if (savedAnswers) {
+        const parsedAnswers = JSON.parse(savedAnswers);
+        setAnswers(parsedAnswers);
+      }
+    } catch (error) {
+      console.error("Error loading answers from localStorage:", error);
+    }
+  }, []);
+
+  // Save answers to localStorage whenever answers change
+  useEffect(() => {
+    if (Object.keys(answers).length > 0) {
+      try {
+        localStorage.setItem(EXAM_ANSWERS_STORAGE_KEY, JSON.stringify(answers));
+      } catch (error) {
+        console.error("Error saving answers to localStorage:", error);
+      }
+    }
+  }, [answers]);
 
   // Fetch exam settings
   const fetchExamSettings = useCallback(async () => {
@@ -108,11 +127,6 @@ export const ExamTaking: React.FC = () => {
         passingScore: 70,
       });
     }
-  }, []);
-
-  // Load face-api models on mount
-  useEffect(() => {
-    loadModels();
   }, []);
 
   // Fetch exam settings on component mount
@@ -165,257 +179,202 @@ export const ExamTaking: React.FC = () => {
     }
   }, [questionsResponse, examSettings, isExamStarted]);
 
-  // Face verification function
-  const performFaceVerification = useCallback(async (isModalVerification = false) => {
-    const webcamReference = isModalVerification ? modalWebcamRef : webcamRef;
-    
-    if (!webcamReference.current?.video) {
-      console.warn("Webcam video element not available");
-      if (!isModalVerification) {
-        // If it's not modal verification and camera is not available, pause exam
-        setIsExamPaused(true);
-        setShowReauthenticationModal(true);
-        if (faceVerificationIntervalRef.current) {
-          clearInterval(faceVerificationIntervalRef.current);
-          faceVerificationIntervalRef.current = null;
-        }
-        showToast({
-          type: "error",
-          title: "試験中断",
-          message: "カメラが利用できません。再認証が必要です。",
-        });
-      }
-      return false;
-    }
-
-    try {
-      const video = webcamReference.current.video;
-      const descriptor = await getFaceDescriptorFromVideo(video);
-
-      if (!descriptor) {
-        console.warn("No face detected in video frame");
-        if (isModalVerification) {
-          // In modal, just show error message
-          showToast({
-            type: "error",
-            title: "顔検出エラー",
-            message: "顔を検出できませんでした。カメラの前に顔を向けてください。",
-          });
-        } else {
-          // In regular verification, pause exam and show modal
-          setIsExamPaused(true);
-          setShowReauthenticationModal(true);
-          // Clear face verification interval
-          if (faceVerificationIntervalRef.current) {
-            clearInterval(faceVerificationIntervalRef.current);
-            faceVerificationIntervalRef.current = null;
-          }
-          setFaceVerificationStatus({
-            isVerified: false,
-            message: "顔を検出できませんでした",
-            showMessage: false,
-          });
-          showToast({
-            type: "error",
-            title: "試験中断",
-            message: "顔を検出できませんでした。再認証が必要です。",
-          });
-        }
-        return false;
-      }
-
-      const descriptorArray = Array.from(descriptor);
-      const token = localStorage.getItem("authToken");
-      const API_URL = import.meta.env.VITE_API_URL || "http://85.131.238.90:4000";
-
-      const res = await fetch(`${API_URL}/api/student/exams/verify-face`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ faceDescriptor: descriptorArray }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok && data.success) {
-        // Face verification successful
-        if (isModalVerification) {
-          // Modal verification successful - resume exam
-          setIsExamPaused(false);
-          setShowReauthenticationModal(false);
-          setIsReauthenticating(false);
-          showToast({
-            type: "success",
-            title: "再認証成功",
-            message: "顔認証に合格しました。試験を再開します。",
-          });
-        } else {
-          // Regular verification successful
-          setFaceVerificationStatus({
-            isVerified: true,
-            message: "顔認証に合格しました",
-            showMessage: true,
-          });
-
-          // Hide message after 3 seconds
-          setTimeout(() => {
-            setFaceVerificationStatus((prev) => ({
-              ...prev,
-              showMessage: false,
-            }));
-          }, 3000);
-        }
-        return true;
-      } else {
-        // Face verification failed
-        console.warn("Face verification failed:", data.message);
-        
-        if (isModalVerification) {
-          showToast({
-            type: "error",
-            title: "認証失敗",
-            message: "顔認証に失敗しました。もう一度お試しください。",
-          });
-        } else {
-          // Pause exam and show modal
-          setIsExamPaused(true);
-          setShowReauthenticationModal(true);
-          // Clear face verification interval
-          if (faceVerificationIntervalRef.current) {
-            clearInterval(faceVerificationIntervalRef.current);
-            faceVerificationIntervalRef.current = null;
-          }
-          setFaceVerificationStatus({
-            isVerified: false,
-            message: "顔認証に失敗しました",
-            showMessage: false,
-          });
-          showToast({
-            type: "error",
-            title: "試験中断",
-            message: "顔認証に失敗しました。再認証が必要です。",
-          });
-        }
-        return false;
-      }
-    } catch (error) {
-      console.error("Face verification error:", error);
-      if (isModalVerification) {
-        showToast({
-          type: "error",
-          title: "エラー",
-          message: "顔認証中にエラーが発生しました。",
-        });
-      } else {
-        // In regular verification, pause exam and show modal on error
-        setIsExamPaused(true);
-        setShowReauthenticationModal(true);
-        // Clear face verification interval
-        if (faceVerificationIntervalRef.current) {
-          clearInterval(faceVerificationIntervalRef.current);
-          faceVerificationIntervalRef.current = null;
-        }
-        setFaceVerificationStatus({
-          isVerified: false,
-          message: "エラーが発生しました",
-          showMessage: false,
-        });
-        showToast({
-          type: "error",
-          title: "試験中断",
-          message: "顔認証中にエラーが発生しました。再認証が必要です。",
-        });
-      }
-      return false;
-    }
-  }, [showToast]);
-
-  // Start face verification after 20 seconds, then every 20 seconds
+  // Block browser tab close/refresh when exam is started
   useEffect(() => {
-    if (!isExamStarted || isExamPaused) {
-      return;
-    }
-
-    // Clear any existing interval
-    if (faceVerificationIntervalRef.current) {
-      clearInterval(faceVerificationIntervalRef.current);
-      faceVerificationIntervalRef.current = null;
-    }
-
-    // Calculate delay until first verification (20 seconds after start)
-    const firstVerificationDelay = 20000;
-
-    // Set timeout for first verification
-    const firstVerificationTimeout = setTimeout(() => {
-      if (!isExamPaused && timeRemainingRef.current > 0) {
-        performFaceVerification(false);
-      }
-
-      // Then set interval for subsequent verifications every 20 seconds
-      faceVerificationIntervalRef.current = setInterval(() => {
-        // Check if exam is still active and not paused before performing verification
-        if (timeRemainingRef.current > 0 && !isExamPaused) {
-          performFaceVerification(false);
-        } else {
-          // Clear interval if exam has ended or is paused
-          if (faceVerificationIntervalRef.current) {
-            clearInterval(faceVerificationIntervalRef.current);
-            faceVerificationIntervalRef.current = null;
-          }
-        }
-      }, 20000);
-    }, firstVerificationDelay);
-
-    // Cleanup
-    return () => {
-      clearTimeout(firstVerificationTimeout);
-      if (faceVerificationIntervalRef.current) {
-        clearInterval(faceVerificationIntervalRef.current);
-        faceVerificationIntervalRef.current = null;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isExamStarted) {
+        e.preventDefault();
+        e.returnValue = "";
+        return "";
       }
     };
-  }, [isExamStarted, isExamPaused, performFaceVerification]);
 
-  // Resume face verification after reauthentication
-  useEffect(() => {
-    if (!isExamPaused && isExamStarted && timeRemainingRef.current > 0) {
-      // Restart face verification interval after reauthentication
-      if (faceVerificationIntervalRef.current) {
-        clearInterval(faceVerificationIntervalRef.current);
-        faceVerificationIntervalRef.current = null;
-      }
-
-      // Start interval again immediately (every 20 seconds)
-      faceVerificationIntervalRef.current = setInterval(() => {
-        if (timeRemainingRef.current > 0 && !isExamPaused) {
-          performFaceVerification(false);
-        } else {
-          if (faceVerificationIntervalRef.current) {
-            clearInterval(faceVerificationIntervalRef.current);
-            faceVerificationIntervalRef.current = null;
-          }
-        }
-      }, 20000);
-
-      return () => {
-        if (faceVerificationIntervalRef.current) {
-          clearInterval(faceVerificationIntervalRef.current);
-          faceVerificationIntervalRef.current = null;
-        }
-      };
+    if (isExamStarted) {
+      window.addEventListener("beforeunload", handleBeforeUnload);
     }
-  }, [isExamPaused, isExamStarted, performFaceVerification]);
 
-  // Handle reauthentication button click
-  const handleReauthentication = async () => {
-    setIsReauthenticating(true);
-    await performFaceVerification(true);
-    setIsReauthenticating(false);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [isExamStarted]);
+
+  // Intercept navigation attempts when exam is started
+  useEffect(() => {
+    if (!isExamStarted) return;
+
+    const originalPushState = window.history.pushState;
+    const originalReplaceState = window.history.replaceState;
+    let isNavigatingAway = false;
+
+    // Override pushState to intercept navigation
+    window.history.pushState = function (...args) {
+      if (isExamStarted && !isNavigatingAway && !isSubmitting) {
+        const newPath = args[2] as string;
+        if (newPath && newPath !== location.pathname) {
+          // Show confirmation modal
+          setShowNavigationConfirm(true);
+          pendingNavigationRef.current = () => {
+            isNavigatingAway = true;
+            localStorage.removeItem(EXAM_ANSWERS_STORAGE_KEY);
+            setIsExamStarted(false);
+            setShowNavigationConfirm(false);
+            // Allow navigation
+            originalPushState.apply(window.history, args);
+            // Trigger navigation
+            window.dispatchEvent(new PopStateEvent("popstate"));
+            pendingNavigationRef.current = null;
+          };
+          return; // Block navigation
+        }
+      }
+      return originalPushState.apply(window.history, args);
+    };
+
+    // Override replaceState to intercept navigation
+    window.history.replaceState = function (...args) {
+      if (isExamStarted && !isNavigatingAway && !isSubmitting) {
+        const newPath = args[2] as string;
+        if (newPath && newPath !== location.pathname) {
+          // Show confirmation modal
+          setShowNavigationConfirm(true);
+          pendingNavigationRef.current = () => {
+            isNavigatingAway = true;
+            localStorage.removeItem(EXAM_ANSWERS_STORAGE_KEY);
+            setIsExamStarted(false);
+            setShowNavigationConfirm(false);
+            // Allow navigation
+            originalReplaceState.apply(window.history, args);
+            // Trigger navigation
+            window.dispatchEvent(new PopStateEvent("popstate"));
+            pendingNavigationRef.current = null;
+          };
+          return; // Block navigation
+        }
+      }
+      return originalReplaceState.apply(window.history, args);
+    };
+
+    // Handle browser back/forward buttons
+    const handlePopState = (e: PopStateEvent) => {
+      if (isExamStarted && !isNavigatingAway && !isSubmitting) {
+        e.preventDefault();
+        // Revert the navigation
+        window.history.pushState(null, "", location.pathname);
+        // Show confirmation modal
+        setShowNavigationConfirm(true);
+        pendingNavigationRef.current = () => {
+          isNavigatingAway = true;
+          localStorage.removeItem(EXAM_ANSWERS_STORAGE_KEY);
+          setIsExamStarted(false);
+          setShowNavigationConfirm(false);
+          // Navigate back
+          window.history.back();
+          pendingNavigationRef.current = null;
+        };
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.history.pushState = originalPushState;
+      window.history.replaceState = originalReplaceState;
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [isExamStarted, isSubmitting, location.pathname]);
+
+  const handleConfirmNavigation = () => {
+    if (pendingNavigationRef.current) {
+      pendingNavigationRef.current();
+    }
   };
 
+  const handleCancelNavigation = () => {
+    setShowNavigationConfirm(false);
+    pendingNavigationRef.current = null;
+  };
+
+  // Helper function to create exam results structure
+  const createExamResults = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (backendResult?: { examResult?: any }) => {
+      // Get backend result if available, otherwise create from frontend data
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const backendExamResult: any = backendResult?.examResult;
+      const adminTotalQuestions = examData?.totalQuestions || 0;
+
+      // Always use admin-submitted total questions, not the number of answered questions
+      const result = backendExamResult
+        ? {
+            ...backendExamResult,
+            // Override totalQuestions to always use admin-submitted questions count
+            totalQuestions: adminTotalQuestions,
+            // Ensure all questions from examData are included in answers array
+            answers:
+              examData?.questions?.map((q) => {
+                // Find corresponding answer from backend result
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const backendAnswer = backendExamResult.answers?.find(
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  (a: any) => a.questionId === q._id
+                );
+
+                // If backend has answer, use it; otherwise create from frontend data
+                return (
+                  backendAnswer || {
+                    questionId: q._id,
+                    questionContent: q.content,
+                    questionType: q.type,
+                    answer: answers[q._id] || null,
+                    answeredAt: null,
+                    isCorrect: false,
+                    pointsEarned: 0,
+                    examineeAnswered: answers[q._id] !== undefined,
+                    correctAnswer: q.correctAnswer,
+                    options: q.options,
+                  }
+                );
+              }) ||
+              backendExamResult.answers ||
+              [],
+          }
+        : {
+            examineeId: localStorage.getItem("userId") || "anonymous",
+            examineeName: localStorage.getItem("username") || "受講生",
+            examId: examData?.id || "standalone-exam",
+            examType: "standalone",
+            answers:
+              examData?.questions?.map((q) => ({
+                questionId: q._id,
+                questionContent: q.content,
+                questionType: q.type,
+                answer: answers[q._id] || null,
+                answeredAt: null,
+                isCorrect: false,
+                pointsEarned: 0,
+                examineeAnswered: answers[q._id] !== undefined,
+                correctAnswer: q.correctAnswer,
+                options: q.options,
+              })) || [],
+            score: 0,
+            totalQuestions: adminTotalQuestions,
+            percentage: 0,
+            passed: false,
+            timeSpent: examData ? examData.duration * 60 - timeRemaining : 0,
+            submittedAt: new Date().toISOString(),
+            gradedAt: new Date().toISOString(),
+          };
+
+      return result;
+    },
+    [answers, examData, timeRemaining]
+  );
+
   const handleSubmitExam = useCallback(async () => {
+    // Set submitting flag to prevent confirmation modal from showing
+    setIsSubmitting(true);
+    setIsExamStarted(false); // Allow navigation after submission
+
     try {
       // Prepare exam submission data
       const examSubmissionData = {
@@ -449,35 +408,50 @@ export const ExamTaking: React.FC = () => {
       if (response.ok) {
         const result = await response.json();
         console.log("Exam submitted successfully:", result);
-        // Navigate to results page or show success message
+        // Clear saved answers from localStorage after successful submission
+        localStorage.removeItem(EXAM_ANSWERS_STORAGE_KEY);
+
+        // Navigate to results page with exam results
+        const examResults = createExamResults(result);
         navigate("/exam-results", {
-          state: { examResults: result.examResult },
+          state: { examResults },
         });
       } else {
-        console.error("Failed to submit exam:", await response.text());
-        // Still navigate to home page even if submission fails
-        navigate("/");
+        // Even if submission fails, try to navigate to results page with available data
+        const errorText = await response.text();
+        console.error("Failed to submit exam:", errorText);
+
+        // Clear saved answers from localStorage
+        localStorage.removeItem(EXAM_ANSWERS_STORAGE_KEY);
+
+        // Create a basic result structure from available data
+        const examResults = createExamResults();
+
+        // Navigate to results page even on error
+        navigate("/exam-results", {
+          state: { examResults },
+        });
       }
     } catch (error) {
       console.error("Error submitting exam:", error);
-      // Navigate to home page on error
-      navigate("/");
-    }
-  }, [answers, examData, timeRemaining, navigate]);
+      // Clear localStorage on error
+      localStorage.removeItem(EXAM_ANSWERS_STORAGE_KEY);
 
-  // Timer effect - pause when exam is paused
+      // Create a basic result structure from available data even on error
+      const examResults = createExamResults();
+
+      // Navigate to results page even on error
+      navigate("/exam-results", {
+        state: { examResults },
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [answers, examData, timeRemaining, navigate, createExamResults]);
+
+  // Timer effect
   useEffect(() => {
     if (timeRemaining <= 0) {
-      // Clear face verification interval when exam ends
-      if (faceVerificationIntervalRef.current) {
-        clearInterval(faceVerificationIntervalRef.current);
-        faceVerificationIntervalRef.current = null;
-      }
-      return;
-    }
-
-    // Don't count down if exam is paused
-    if (isExamPaused) {
       return;
     }
 
@@ -494,16 +468,7 @@ export const ExamTaking: React.FC = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeRemaining, handleSubmitExam, isExamPaused]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (faceVerificationIntervalRef.current) {
-        clearInterval(faceVerificationIntervalRef.current);
-      }
-    };
-  }, []);
+  }, [timeRemaining, handleSubmitExam]);
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -584,6 +549,18 @@ export const ExamTaking: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Navigation Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showNavigationConfirm}
+        onClose={handleCancelNavigation}
+        onConfirm={handleConfirmNavigation}
+        title="ページ遷移の確認"
+        message="試験中です。このページから移動すると、試験の進捗が失われる可能性があります。本当に移動しますか？"
+        confirmText="移動する"
+        cancelText="キャンセル"
+        confirmButtonClass="bg-red-500 hover:bg-red-600"
+      />
+
       {/* Header - 日本式デザイン */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
@@ -615,58 +592,9 @@ export const ExamTaking: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-10">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Left Sidebar - Camera */}
-          <div className="lg:col-span-1">
-            <div className="bg-white border border-gray-200 rounded-md p-6 shadow-sm sticky top-6">
-              <h3 className="text-base font-medium text-gray-900 mb-4 tracking-wide">
-                顔認証
-              </h3>
-              <div className="relative">
-                <div className="w-full aspect-square bg-gray-100 rounded-md overflow-hidden border border-gray-300 shadow-md">
-                  <Webcam
-                    ref={webcamRef}
-                    audio={false}
-                    screenshotFormat="image/png"
-                    videoConstraints={{
-                      width: 640,
-                      height: 640,
-                      facingMode: "user",
-                    }}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="absolute top-2 right-2 bg-orange-500 rounded-full p-1.5 shadow-md">
-                  <Camera className="w-4 h-4 text-white" />
-                </div>
-                <div className="absolute bottom-2 left-2 bg-orange-500/80 text-white text-xs px-2 py-1 rounded font-medium">
-                  認証中
-                </div>
-              </div>
-              {faceVerificationStatus.showMessage && (
-                <div
-                  className={`mt-4 px-4 py-3 rounded-md text-sm font-medium text-center shadow-sm ${
-                    faceVerificationStatus.isVerified
-                      ? "bg-green-50 text-green-700 border border-green-200"
-                      : "bg-red-50 text-red-700 border border-red-200"
-                  }`}
-                >
-                  <div className="flex items-center justify-center space-x-2">
-                    {faceVerificationStatus.isVerified && (
-                      <CheckCircle className="w-4 h-4" />
-                    )}
-                    <span>{faceVerificationStatus.message}</span>
-                  </div>
-                </div>
-              )}
-              <div className="mt-4 text-xs text-gray-500 text-center">
-                カメラの前に顔を向けてください
-              </div>
-            </div>
-          </div>
-
-          {/* Right Side - Question Content - ページネーション形式 */}
-          <div className="lg:col-span-3">
+        <div className="grid grid-cols-1 gap-8">
+          {/* Question Content - ページネーション形式 */}
+          <div>
             <div className="bg-white border border-gray-200 rounded-md p-10 shadow-sm min-h-[600px] flex flex-col">
               {currentQuestion && (
                 <>
@@ -674,7 +602,8 @@ export const ExamTaking: React.FC = () => {
                   <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-200">
                     <div className="flex items-center gap-4">
                       <h2 className="text-lg font-medium text-gray-900 tracking-wide">
-                        問題 {currentQuestionIndex + 1} / {examData.totalQuestions}
+                        問題 {currentQuestionIndex + 1} /{" "}
+                        {examData.totalQuestions}
                       </h2>
                       <div className="flex items-center gap-2">
                         {examData.questions.map((_, index) => (
@@ -683,7 +612,8 @@ export const ExamTaking: React.FC = () => {
                             className={`w-2 h-2 rounded-full transition-all ${
                               index === currentQuestionIndex
                                 ? "bg-orange-500 w-8"
-                                : answers[examData.questions[index]._id] !== undefined
+                                : answers[examData.questions[index]._id] !==
+                                  undefined
                                 ? "bg-green-500"
                                 : "bg-gray-300"
                             }`}
@@ -692,7 +622,8 @@ export const ExamTaking: React.FC = () => {
                       </div>
                     </div>
                     <div className="text-sm text-gray-500">
-                      {Object.keys(answers).length} / {examData.totalQuestions} 回答済み
+                      {Object.keys(answers).length} / {examData.totalQuestions}{" "}
+                      回答済み
                     </div>
                   </div>
 
@@ -717,7 +648,9 @@ export const ExamTaking: React.FC = () => {
                               }
                               className="w-4 h-4 text-gray-800"
                             />
-                            <span className="text-gray-800 text-sm">正しい</span>
+                            <span className="text-gray-800 text-sm">
+                              正しい
+                            </span>
                           </label>
                           <label className="flex items-center space-x-3 px-5 py-3.5 border border-gray-300 rounded-md hover:bg-gray-50 cursor-pointer transition-colors">
                             <input
@@ -730,7 +663,9 @@ export const ExamTaking: React.FC = () => {
                               }
                               className="w-4 h-4 text-gray-800"
                             />
-                            <span className="text-gray-800 text-sm">間違い</span>
+                            <span className="text-gray-800 text-sm">
+                              間違い
+                            </span>
                           </label>
                         </>
                       ) : currentQuestion.type === "single_choice" ? (
@@ -755,7 +690,9 @@ export const ExamTaking: React.FC = () => {
                               }
                               className="w-4 h-4 text-gray-800"
                             />
-                            <span className="text-gray-800 text-sm">{option.text}</span>
+                            <span className="text-gray-800 text-sm">
+                              {option.text}
+                            </span>
                           </label>
                         ))
                       ) : currentQuestion.type === "multiple_choice" ? (
@@ -797,7 +734,9 @@ export const ExamTaking: React.FC = () => {
                               }}
                               className="w-4 h-4 text-gray-800"
                             />
-                            <span className="text-gray-800 text-sm">{option.text}</span>
+                            <span className="text-gray-800 text-sm">
+                              {option.text}
+                            </span>
                           </label>
                         ))
                       ) : null}
@@ -817,21 +756,118 @@ export const ExamTaking: React.FC = () => {
 
                     {/* ページ番号表示 */}
                     <div className="flex items-center gap-2">
-                      {examData.questions.map((question, index) => (
-                        <button
-                          key={question._id}
-                          onClick={() => goToQuestion(index)}
-                          className={`w-10 h-10 rounded-lg text-sm font-medium transition-all ${
-                            index === currentQuestionIndex
-                              ? "bg-orange-500 text-white shadow-md"
-                              : answers[question._id] !== undefined
-                              ? "bg-green-100 text-green-800 border border-green-300 hover:bg-green-200"
-                              : "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50"
-                          }`}
-                        >
-                          {index + 1}
-                        </button>
-                      ))}
+                      {(() => {
+                        const totalQuestions = examData.totalQuestions;
+                        const currentIndex = currentQuestionIndex;
+
+                        // 10問未満の場合はすべて表示
+                        if (totalQuestions <= 10) {
+                          return examData.questions.map((question, index) => (
+                            <button
+                              key={question._id}
+                              onClick={() => goToQuestion(index)}
+                              className={`w-10 h-10 rounded-lg text-sm font-medium transition-all ${
+                                index === currentQuestionIndex
+                                  ? "bg-orange-500 text-white shadow-md"
+                                  : answers[question._id] !== undefined
+                                  ? "bg-green-100 text-green-800 border border-green-300 hover:bg-green-200"
+                                  : "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50"
+                              }`}
+                            >
+                              {index + 1}
+                            </button>
+                          ));
+                        }
+
+                        // 10問以上の場合は省略記号を使用
+                        const buttons: (number | "ellipsis")[] = [];
+                        const addedIndices = new Set<number>();
+
+                        // 常に最初のボタン（1）を表示
+                        buttons.push(0);
+                        addedIndices.add(0);
+
+                        // 現在のページ周辺の範囲を計算（前後2つずつ）
+                        const leftBound = Math.max(1, currentIndex - 2);
+                        const rightBound = Math.min(
+                          totalQuestions - 2,
+                          currentIndex + 2
+                        );
+
+                        // 左側の処理
+                        if (leftBound > 2) {
+                          // ギャップが大きい場合は省略記号
+                          buttons.push("ellipsis");
+                        } else if (leftBound === 2 && !addedIndices.has(1)) {
+                          // ギャップが1つだけの場合は直接表示
+                          buttons.push(1);
+                          addedIndices.add(1);
+                        }
+
+                        // 現在のページ周辺のボタン（最初と最後を除く）
+                        for (let i = leftBound; i <= rightBound; i++) {
+                          if (
+                            i > 0 &&
+                            i < totalQuestions - 1 &&
+                            !addedIndices.has(i)
+                          ) {
+                            buttons.push(i);
+                            addedIndices.add(i);
+                          }
+                        }
+
+                        // 右側の処理
+                        if (rightBound < totalQuestions - 3) {
+                          // ギャップが大きい場合は省略記号
+                          buttons.push("ellipsis");
+                        } else if (
+                          rightBound === totalQuestions - 3 &&
+                          !addedIndices.has(totalQuestions - 2)
+                        ) {
+                          // ギャップが1つだけの場合は直接表示
+                          buttons.push(totalQuestions - 2);
+                          addedIndices.add(totalQuestions - 2);
+                        }
+
+                        // 常に最後のボタンを表示
+                        if (!addedIndices.has(totalQuestions - 1)) {
+                          buttons.push(totalQuestions - 1);
+                        }
+
+                        return buttons.map((item, idx) => {
+                          if (item === "ellipsis") {
+                            return (
+                              <span
+                                key={`ellipsis-${idx}`}
+                                className="w-10 h-10 inline-flex items-center justify-center text-gray-400 text-sm"
+                              >
+                                …
+                              </span>
+                            );
+                          }
+
+                          const question = examData.questions[item];
+                          const isAnswered =
+                            answers[question._id] !== undefined;
+                          const isCurrent = item === currentQuestionIndex;
+
+                          return (
+                            <button
+                              key={question._id}
+                              onClick={() => goToQuestion(item)}
+                              className={`w-10 h-10 rounded-lg text-sm font-medium transition-all ${
+                                isCurrent
+                                  ? "bg-orange-500 text-white shadow-md"
+                                  : isAnswered
+                                  ? "bg-green-100 text-green-800 border border-green-300 hover:bg-green-200"
+                                  : "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50"
+                              }`}
+                            >
+                              {item + 1}
+                            </button>
+                          );
+                        });
+                      })()}
                     </div>
 
                     <button
@@ -851,78 +887,6 @@ export const ExamTaking: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Reauthentication Modal - 日本式デザイン */}
-      {showReauthenticationModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm">
-          <div className="bg-white rounded-md shadow-2xl max-w-lg w-full mx-4 border border-gray-200">
-            <div className="px-8 py-6 border-b border-gray-200">
-              <h3 className="text-xl font-medium text-gray-900 tracking-wide">
-                顔認証が必要です
-              </h3>
-              <p className="text-sm text-gray-600 mt-2 font-light">
-                試験を続行するには、顔認証に合格する必要があります。
-              </p>
-            </div>
-
-            <div className="px-8 py-6">
-              {/* Camera Preview */}
-              <div className="relative w-full aspect-video bg-gray-100 rounded-md overflow-hidden border border-gray-300 mb-5">
-                <Webcam
-                  ref={modalWebcamRef}
-                  audio={false}
-                  screenshotFormat="image/png"
-                  videoConstraints={{
-                    width: 640,
-                    height: 480,
-                    facingMode: "user",
-                  }}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute bottom-3 right-3 bg-orange-500 rounded-full p-2 shadow-md">
-                  <Camera className="w-4 h-4 text-white" />
-                </div>
-              </div>
-
-              {/* Instructions */}
-              <div className="bg-gray-50 border border-gray-200 rounded-md p-4 mb-5">
-                <div className="flex items-start">
-                  <AlertCircle className="w-5 h-5 text-gray-700 mt-0.5 mr-3 flex-shrink-0" />
-                  <div className="text-sm text-gray-700">
-                    <p className="font-medium mb-2 text-gray-900">認証手順</p>
-                    <ul className="list-disc list-inside space-y-1.5 text-gray-600">
-                      <li>カメラの前に顔を向けてください</li>
-                      <li>十分な明るさを確保してください</li>
-                      <li>顔がはっきりと見える状態にしてください</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="px-8 py-5 flex space-x-3 border-t border-gray-200 bg-gray-50 rounded-b-md">
-              <button
-                onClick={handleReauthentication}
-                disabled={isReauthenticating}
-                className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white px-6 py-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-2 shadow-sm"
-              >
-                {isReauthenticating ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>認証中...</span>
-                  </>
-                ) : (
-                  <>
-                    <Camera className="w-4 h-4" />
-                    <span>顔認証を実行</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

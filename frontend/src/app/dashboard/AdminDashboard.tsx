@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Youtube, ClipboardList, Cog } from "lucide-react";
+import { Users, Youtube, ClipboardList, Cog, BookOpen } from "lucide-react";
 import { getStoredUser, isAuthenticated } from "../../api/auth/authService";
 import type { User as AuthUser } from "../../api/auth/authService";
 import { BossLayout } from "../../components/layout/AdminLayout";
@@ -60,7 +60,7 @@ export const AdminDashboard: React.FC = () => {
           <h3 className="text-xl font-semibold text-slate-800 mb-4">
             クイックアクション
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <button
               onClick={() => navigate("/student-management")}
               className="bg-white rounded-xl shadow-lg p-6 border border-slate-200 hover:shadow-xl transition-all duration-200 text-left group cursor-pointer"
@@ -94,6 +94,23 @@ export const AdminDashboard: React.FC = () => {
             </button>
 
             <button
+              onClick={() => navigate("/admin/question-management")}
+              className="bg-white rounded-xl shadow-lg p-6 border border-slate-200 hover:shadow-xl transition-all duration-200 text-left group cursor-pointer"
+            >
+              <div className="flex items-center space-x-4">
+                <div className="bg-purple-100 p-3 rounded-lg group-hover:bg-purple-200 transition-colors">
+                  <BookOpen className="w-6 h-6 text-purple-600" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-slate-800">問題管理</h4>
+                  <p className="text-slate-600 text-sm">
+                    試験問題の作成と管理
+                  </p>
+                </div>
+              </div>
+            </button>
+
+            <button
               onClick={() => navigate("/admin/exam-management")}
               className="bg-white rounded-xl shadow-lg p-6 border border-slate-200 hover:shadow-xl transition-all duration-200 text-left group cursor-pointer"
             >
@@ -119,6 +136,21 @@ export const AdminDashboard: React.FC = () => {
                 <div>
                   <h4 className="font-semibold text-slate-800">試験設定</h4>
                   <p className="text-slate-600 text-sm">試験の基本設定と管理</p>
+                </div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => navigate("/admin/certificate-generator")}
+              className="bg-white rounded-xl shadow-lg p-6 border border-slate-200 hover:shadow-xl transition-all duration-200 text-left group cursor-pointer"
+            >
+              <div className="flex items-center space-x-4">
+                <div className="bg-yellow-100 p-3 rounded-lg group-hover:bg-yellow-200 transition-colors">
+                  <ClipboardList className="w-6 h-6 text-yellow-600" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-slate-800">修了証発行</h4>
+                  <p className="text-slate-600 text-sm">修了証明書の生成と管理</p>
                 </div>
               </div>
             </button>

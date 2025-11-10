@@ -1,9 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Plus,
   Search,
-  Eye,
   Edit,
   Trash2,
   BookOpen,
@@ -13,6 +12,7 @@ import {
 import { useToast } from "../../hooks/useToast";
 import { BossLayout } from "../../components/layout/AdminLayout";
 import { ConfirmModal } from "../../components/atom/ConfirmModal";
+import { Pagination } from "../../components/atom/Pagination";
 import {
   courseOptions,
   useGetQuestionsQuery,
@@ -30,6 +30,9 @@ export const ExamQuestionManagement: React.FC = () => {
   const [questionToDelete, setQuestionToDelete] = useState<Question | null>(
     null
   );
+  // Pagination state - 6 items per page
+  const [page, setPage] = useState(1);
+  const pageSize = 6;
 
   // API hooks
   const {
@@ -51,14 +54,36 @@ export const ExamQuestionManagement: React.FC = () => {
   ];
 
   // Filter questions based on search term and filters
-  const filteredQuestions = (questionsData?.questions || []).filter(
-    (question) => {
+  const filteredQuestions = useMemo(() => {
+    return (questionsData?.questions || []).filter((question) => {
       const matchesSearch =
         question.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         question.content.toLowerCase().includes(searchTerm.toLowerCase());
       return matchesSearch;
-    }
+    });
+  }, [questionsData?.questions, searchTerm]);
+
+  // Pagination calculations
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredQuestions.length / pageSize)
   );
+  const startIndex = (page - 1) * pageSize;
+  const pagedQuestions = useMemo(() => {
+    return filteredQuestions.slice(startIndex, startIndex + pageSize);
+  }, [filteredQuestions, startIndex, pageSize]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, selectedCourse, selectedType]);
+
+  // Ensure page is within bounds
+  useEffect(() => {
+    if (page > totalPages && totalPages > 0) {
+      setPage(totalPages);
+    }
+  }, [totalPages, page]);
 
   const handleDelete = (question: Question) => {
     setQuestionToDelete(question);
@@ -176,7 +201,7 @@ export const ExamQuestionManagement: React.FC = () => {
 
             {/* Add Question Button */}
             <button
-              onClick={() => navigate("/admin/exam-management/create")}
+              onClick={() => navigate("/admin/question-management/create")}
               className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
             >
               <Plus className="w-5 h-5" />
@@ -209,7 +234,7 @@ export const ExamQuestionManagement: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {filteredQuestions.map((question) => (
+                {pagedQuestions.map((question) => (
                   <tr key={question._id} className="hover:bg-slate-50">
                     <td className="px-6 py-4">
                       <div className="flex-1 min-w-0">
@@ -251,21 +276,12 @@ export const ExamQuestionManagement: React.FC = () => {
                       <div className="flex items-center justify-center space-x-2">
                         <button
                           onClick={() =>
-                            navigate(`/admin/exam-management/${question._id}`)
-                          }
-                          className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                          title="詳細表示"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() =>
                             navigate(
-                              `/admin/exam-management/${question._id}/edit`
+                              `/admin/question-management/${question._id}/edit`
                             )
                           }
                           className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
-                          title="編集"
+                          title="更新"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
@@ -295,6 +311,15 @@ export const ExamQuestionManagement: React.FC = () => {
                   : "まだ問題が作成されていません"}
               </p>
             </div>
+          )}
+
+          {/* Pagination - only show if more than 6 items */}
+          {filteredQuestions.length > 6 && totalPages > 1 && (
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onChange={(p) => setPage(p)}
+            />
           )}
         </div>
 

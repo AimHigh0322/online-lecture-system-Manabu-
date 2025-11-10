@@ -42,6 +42,8 @@ const adminRoutes = require("./router/admin/adminRoutes");
 const questionRoutes = require("./router/admin/questionRoutes");
 const studentExamRoutes = require("./router/student/studentExamRoutes");
 const examRoutes = require("./router/exam/examRoutes");
+const notificationRoutes = require("./router/notifications/notificationRoutes");
+const certificateRoutes = require("./router/certificates/certificateRoutes");
 
 // API routes
 app.use("/api/payment", paymentRoutes);
@@ -53,6 +55,8 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/questions", questionRoutes);
 app.use("/api/student/exams", studentExamRoutes);
 app.use("/api/exam", examRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/certificates", certificateRoutes);
 
 // Start server
 const startServer = async () => {

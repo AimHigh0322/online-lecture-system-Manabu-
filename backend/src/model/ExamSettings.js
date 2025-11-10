@@ -23,6 +23,13 @@ const examSettingsSchema = new mongoose.Schema(
       min: 0,
       max: 100,
     },
+    faceVerificationIntervalMinutes: {
+      type: Number,
+      required: true,
+      default: 15,
+      min: 1,
+      max: 60, // Maximum 60 minutes
+    },
     lastUpdated: {
       type: Date,
       default: Date.now,

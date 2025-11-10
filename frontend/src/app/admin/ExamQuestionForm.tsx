@@ -106,6 +106,15 @@ export const ExamQuestionForm: React.FC = () => {
           { id: "4", text: "", isCorrect: false },
         ],
       });
+      
+      // Set active tab based on question type
+      if (q.type === "true_false") {
+        setActiveTab("type1");
+      } else if (q.type === "multiple_choice") {
+        setActiveTab("type2");
+      } else if (q.type === "single_choice") {
+        setActiveTab("type3");
+      }
     }
   }, [isEditing, questionData]);
 
@@ -292,8 +301,10 @@ export const ExamQuestionForm: React.FC = () => {
         resetFormData();
       }
 
-      // Stay on the same page after saving
-      // navigate("/admin/exam-questions");
+      // Navigate to question management page after update
+      if (isEditing) {
+        navigate("/admin/question-management");
+      }
     } catch (error) {
       console.error("Error submitting form:", error);
       showToast({
@@ -846,11 +857,11 @@ export const ExamQuestionForm: React.FC = () => {
         {/* Header */}
         <div className="mb-6">
           <button
-            onClick={() => navigate("/admin/exam-management")}
+            onClick={() => navigate("/admin/question-management")}
             className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5 mr-2" />
-            試験管理に戻る
+            問題管理に戻る
           </button>
           <h2 className="text-3xl font-bold text-slate-800 mb-2">
             {isEditing ? "問題を編集" : "新しい問題を作成"}
@@ -870,33 +881,53 @@ export const ExamQuestionForm: React.FC = () => {
           <div className="mb-8">
             <div className="border-b border-gray-200">
               <nav className="-mb-px flex space-x-8">
-                {questionTypes.map((type) => (
-                  <button
-                    key={type.value}
-                    type="button"
-                    onClick={() => {
-                      setActiveTab(type.value);
-                      setFormData((prev) => ({
-                        ...prev,
-                        type:
-                          type.value === "type1"
-                            ? "true_false"
-                            : type.value === "type2"
-                            ? "multiple_choice"
-                            : type.value === "type3"
-                            ? "single_choice"
-                            : type.value,
-                      }));
-                    }}
-                    className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                      activeTab === type.value
-                        ? "border-orange-500 text-orange-600"
-                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                    }`}
-                  >
-                    {type.label}
-                  </button>
-                ))}
+                {questionTypes
+                  .filter((type) => {
+                    // In editing mode, only show the tab for the current question type
+                    if (isEditing) {
+                      const questionType = questionData?.question?.type || formData.type;
+                      return (
+                        (type.value === "type1" && questionType === "true_false") ||
+                        (type.value === "type2" && questionType === "multiple_choice") ||
+                        (type.value === "type3" && questionType === "single_choice")
+                      );
+                    }
+                    // In create mode, show all tabs
+                    return true;
+                  })
+                  .map((type) => (
+                    <button
+                      key={type.value}
+                      type="button"
+                      onClick={() => {
+                        // Disable tab switching in editing mode
+                        if (isEditing) return;
+                        
+                        setActiveTab(type.value);
+                        setFormData((prev) => ({
+                          ...prev,
+                          type:
+                            type.value === "type1"
+                              ? "true_false"
+                              : type.value === "type2"
+                              ? "multiple_choice"
+                              : type.value === "type3"
+                              ? "single_choice"
+                              : type.value,
+                        }));
+                      }}
+                      className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                        activeTab === type.value
+                          ? "border-orange-500 text-orange-600"
+                          : isEditing
+                          ? "border-transparent text-gray-500 cursor-default"
+                          : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                      }`}
+                      disabled={isEditing}
+                    >
+                      {type.label}
+                    </button>
+                  ))}
               </nav>
             </div>
             <div className="mt-2">
@@ -920,7 +951,7 @@ export const ExamQuestionForm: React.FC = () => {
           <div className="flex gap-4 justify-end">
             <button
               type="button"
-              onClick={() => navigate("/admin/exam-management")}
+              onClick={() => navigate("/admin/question-management")}
               className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
             >
               キャンセル

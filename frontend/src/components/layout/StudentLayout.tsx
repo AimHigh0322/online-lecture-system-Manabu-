@@ -9,12 +9,13 @@ import {
   Home,
   FileText,
   Edit,
-  Mail,
+  HelpCircle,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { logout, getAuthToken } from "../../api/auth/authService";
 import { useGetExamEligibilityQuery } from "../../api/exam/examApiSlice";
 import { ExamAccessModal } from "../atom/ExamAccessModal";
+import { NotificationIcon } from "../atom/NotificationIcon";
 
 interface StudentLayoutProps {
   children: React.ReactNode;
@@ -200,19 +201,21 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children }) => {
               </button>
               <button
                 className={`flex items-center space-x-2 font-medium transition-colors cursor-pointer text-sm ${
-                  location.pathname === "/contact"
+                  location.pathname === "/help"
                     ? "text-orange-500"
                     : "text-gray-800 hover:text-orange-500"
                 }`}
-                onClick={() => navigate("/contact")}
+                onClick={() => navigate("/help")}
               >
-                <Mail className="w-4 h-4 text-gray-400" />
-                <span>お問い合わせ</span>
+                <HelpCircle className="w-4 h-4 text-gray-400" />
+                <span>ヘルプ</span>
               </button>
             </nav>
 
             {/* User Profile Dropdown */}
             <div className="flex items-center space-x-2 flex-shrink-0">
+              {/* Notification Icon */}
+              <NotificationIcon />
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setShowUserDropdown(!showUserDropdown)}

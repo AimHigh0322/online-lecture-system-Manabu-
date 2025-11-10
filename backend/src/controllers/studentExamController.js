@@ -2,6 +2,9 @@ const Exam = require("../model/Exam");
 const Question = require("../model/Question");
 const ExamAttempt = require("../model/ExamAttempt");
 const Profile = require("../model/Profile");
+const Notification = require("../model/Notification");
+const User = require("../model/User");
+const mongoose = require("mongoose");
 
 // === Helper: Euclidean Distance ===
 function euclideanDistance(desc1, desc2) {
@@ -29,7 +32,11 @@ const verifyFace = async (req, res) => {
 
     // Find profile
     const profile = await Profile.findOne({ userId: user.id });
-    if (!profile || !profile.faceDescriptor || profile.faceDescriptor.length === 0) {
+    if (
+      !profile ||
+      !profile.faceDescriptor ||
+      profile.faceDescriptor.length === 0
+    ) {
       return res.status(404).json({
         success: false,
         message: "No face descriptor found for this user",
@@ -361,15 +368,22 @@ const submitExam = async (req, res) => {
       // Use StandaloneQuestion model to find questions by their actual IDs
       const StandaloneQuestion = require("../model/StandaloneQuestion");
 
-      // Get ALL questions that were submitted to the examinee (not just answered ones)
-      const allQuestions = await StandaloneQuestion.find({ isActive: true });
-      const totalQuestions = allQuestions.length;
+      // Get question IDs from student answers (these are the actual questions that were presented)
+      const questionIds = answers.map((answer) => answer.questionId);
+
+      // Get only the questions that were actually presented to the student
+      const presentedQuestions = await StandaloneQuestion.find({
+        _id: { $in: questionIds },
+        isActive: true,
+      });
+
+      const totalQuestions = presentedQuestions.length;
 
       let totalScore = 0;
       const gradedAnswers = [];
 
       console.log("=== GRADING PROCESS ===");
-      console.log("Total questions submitted to examinee:", totalQuestions);
+      console.log("Total questions presented to examinee:", totalQuestions);
       console.log("Questions answered by student:", answers.length);
 
       // Create a map of student answers for quick lookup
@@ -378,8 +392,19 @@ const submitExam = async (req, res) => {
         studentAnswersMap.set(answer.questionId, answer);
       });
 
-      // Grade ALL questions that were submitted to the examinee
-      for (const question of allQuestions) {
+      // Create a map of questions for quick lookup
+      const questionsMap = new Map();
+      presentedQuestions.forEach((question) => {
+        questionsMap.set(question._id.toString(), question);
+      });
+
+      // Grade only the questions that were presented to the examinee
+      for (const questionId of questionIds) {
+        const question = questionsMap.get(questionId);
+        if (!question) {
+          console.warn(`Question ${questionId} not found, skipping`);
+          continue;
+        }
         console.log("Grading question ID:", question._id);
         console.log("Found question:", question.content);
         console.log("Question type:", question.type);
@@ -449,29 +474,43 @@ const submitExam = async (req, res) => {
         // Add to graded answers (include all questions, answered or not)
         gradedAnswers.push({
           questionId: question._id.toString(),
+          questionContent: question.content || question.title || "",
+          questionType: question.type,
           answer: studentAnswered ? studentAnswer.answer : null,
           answeredAt: studentAnswered ? studentAnswer.answeredAt : null,
           isCorrect,
           pointsEarned,
           studentAnswered,
+          correctAnswer: question.correctAnswer,
+          options: question.options,
         });
       }
 
-      // Calculate percentage based on correct answers divided by total questions
+      // Get exam settings for passing score
+      const ExamSettings = require("../model/ExamSettings");
+      const examSettings = await ExamSettings.getSettings();
+      const passingScore = examSettings.passingScore || 60;
+
+      // For mock attempts, we need to get the exam to retrieve totalQuestions
+      // Since we don't have examId in mock attempts, use presentedQuestions.length as fallback
+      // In real scenarios, this should use exam.totalQuestions
+      const mockTotalQuestions = presentedQuestions.length;
+
+      // Calculate percentage based on correct answers divided by total questions (admin-submitted)
       const percentage =
-        totalQuestions > 0
-          ? Math.round((totalScore / totalQuestions) * 100)
+        mockTotalQuestions > 0
+          ? Math.round((totalScore / mockTotalQuestions) * 100)
           : 0;
-      const passed = percentage >= 60; // 60% passing grade
+      const passed = percentage >= passingScore;
 
       console.log("=== GRADING RESULTS ===");
       console.log("Total Score:", totalScore);
-      console.log("Total Questions:", totalQuestions);
+      console.log("Total Questions (admin-submitted):", mockTotalQuestions);
       console.log("Percentage:", percentage + "%");
       console.log("Passed:", passed);
       console.log(
         "Score divided by total questions:",
-        totalScore + "/" + totalQuestions
+        totalScore + "/" + mockTotalQuestions
       );
       console.log("Graded Answers:", JSON.stringify(gradedAnswers, null, 2));
       console.log("======================");
@@ -515,18 +554,47 @@ const submitExam = async (req, res) => {
       });
     }
 
+    // Get the exam to retrieve total questions count (admin-submitted questions)
+    // Only try to find exam if examId is a valid MongoDB ObjectId
+    let exam = null;
+    if (attempt.examId && mongoose.Types.ObjectId.isValid(attempt.examId)) {
+      try {
+        exam = await Exam.findById(attempt.examId);
+      } catch (error) {
+        console.warn(
+          "Failed to find exam by ID:",
+          attempt.examId,
+          error.message
+        );
+        exam = null;
+      }
+    }
+
+    // If exam is not found, we'll use presentedQuestions.length as fallback
+    // This allows the exam submission to proceed even if exam lookup fails
+
     // Get questions for grading using StandaloneQuestion
     const StandaloneQuestion = require("../model/StandaloneQuestion");
 
-    // Get ALL questions that were submitted to the examinee (not just answered ones)
-    const allQuestions = await StandaloneQuestion.find({ isActive: true });
-    const totalQuestions = allQuestions.length;
+    // Get question IDs from student answers (these are the actual questions that were presented)
+    const questionIds = answers.map((answer) => answer.questionId);
+
+    // Get only the questions that were actually presented to the student
+    const presentedQuestions = await StandaloneQuestion.find({
+      _id: { $in: questionIds },
+      isActive: true,
+    });
+
+    // Use totalQuestions from exam (admin-submitted questions) instead of presentedQuestions.length
+    // This ensures the score is calculated as: correct answers / admin-submitted questions
+    const totalQuestions = exam.totalQuestions || presentedQuestions.length;
 
     let totalScore = 0;
     const gradedAnswers = [];
 
     console.log("=== REAL EXAM GRADING PROCESS ===");
-    console.log("Total questions submitted to examinee:", totalQuestions);
+    console.log("Total questions (admin-submitted):", totalQuestions);
+    console.log("Questions presented to student:", presentedQuestions.length);
     console.log("Questions answered by student:", answers.length);
 
     // Create a map of student answers for quick lookup
@@ -535,8 +603,19 @@ const submitExam = async (req, res) => {
       studentAnswersMap.set(answer.questionId, answer);
     });
 
-    // Grade ALL questions that were submitted to the examinee
-    for (const question of allQuestions) {
+    // Create a map of questions for quick lookup
+    const questionsMap = new Map();
+    presentedQuestions.forEach((question) => {
+      questionsMap.set(question._id.toString(), question);
+    });
+
+    // Grade only the questions that were presented to the examinee
+    for (const questionId of questionIds) {
+      const question = questionsMap.get(questionId);
+      if (!question) {
+        console.warn(`Question ${questionId} not found, skipping`);
+        continue;
+      }
       console.log("Grading question ID:", question._id);
       console.log("Found question:", question.content);
       console.log("Question type:", question.type);
@@ -605,26 +684,36 @@ const submitExam = async (req, res) => {
       // Add to graded answers (include all questions, answered or not)
       gradedAnswers.push({
         questionId: question._id.toString(),
+        questionContent: question.content || question.title || "",
+        questionType: question.type,
         answer: studentAnswered ? studentAnswer.answer : null,
         answeredAt: studentAnswered ? studentAnswer.answeredAt : null,
         isCorrect,
         pointsEarned,
         studentAnswered,
+        correctAnswer: question.correctAnswer,
+        options: question.options,
       });
     }
+
+    // Get exam settings for passing score
+    const ExamSettings = require("../model/ExamSettings");
+    const examSettings = await ExamSettings.getSettings();
+    const passingScore = examSettings.passingScore || 60;
 
     // Calculate percentage based on correct answers divided by total questions
     const percentage =
       totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0;
-    const passed = percentage >= 60; // 60% passing grade
+    const passed = percentage >= passingScore;
 
     console.log("=== REAL EXAM GRADING RESULTS ===");
     console.log("Total Score:", totalScore);
-    console.log("Total Questions:", totalQuestions);
+    console.log("Total Questions (admin-submitted):", totalQuestions);
+    console.log("Questions presented to student:", presentedQuestions.length);
     console.log("Percentage:", percentage + "%");
     console.log("Passed:", passed);
     console.log(
-      "Score divided by total questions:",
+      "Score divided by total questions (admin-submitted):",
       totalScore + "/" + totalQuestions
     );
     console.log("Graded Answers:", JSON.stringify(gradedAnswers, null, 2));
@@ -647,6 +736,38 @@ const submitExam = async (req, res) => {
       },
       { new: true }
     );
+
+    // If exam passed, send notification to all admins
+    if (passed) {
+      try {
+        const admins = await User.find({ role: "admin" });
+        const student = await User.findById(user.id);
+        const studentName = student?.username || student?.email || "受講生";
+
+        const notifications = admins.map((admin) => ({
+          title: "試験合格通知",
+          message: `${studentName}さんが試験に合格しました。修了証を発行してください。`,
+          recipientId: admin._id.toString(),
+          senderId: "system",
+          type: "success",
+          metadata: {
+            userId: user.id,
+            studentName: studentName,
+            action: "issue_certificate",
+          },
+        }));
+
+        if (notifications.length > 0) {
+          await Notification.insertMany(notifications);
+          console.log(
+            `Sent exam pass notification to ${admins.length} admin(s)`
+          );
+        }
+      } catch (error) {
+        console.error("Error sending exam pass notification:", error);
+        // Don't fail the exam submission if notification fails
+      }
+    }
 
     res.json({
       success: true,

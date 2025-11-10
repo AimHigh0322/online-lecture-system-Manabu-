@@ -7,6 +7,8 @@ const getProfile = () => require("./Profile");
 const getCourse = () => require("./Course");
 const getMaterial = () => require("./Material");
 const getExamAttempt = () => require("./ExamAttempt");
+const getNotification = () => require("./Notification");
+const getCertificate = () => require("./Certificate");
 
 module.exports = {
   User,
@@ -21,5 +23,11 @@ module.exports = {
   },
   get ExamAttempt() {
     return getExamAttempt();
+  },
+  get Notification() {
+    return getNotification();
+  },
+  get Certificate() {
+    return getCertificate();
   },
 };

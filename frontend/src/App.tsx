@@ -15,11 +15,12 @@ import ExamQuestionForm from "./app/admin/ExamQuestionForm";
 import ExamManagement from "./app/admin/ExamManagement";
 import ExamSettings from "./app/admin/ExamSettings";
 import CertificateGenerator from "./app/admin/CertificateGenerator";
+import NotificationManagement from "./app/admin/NotificationManagement";
 import ExamRoom from "./app/student/ExamRoom";
 import ExamTaking from "./app/student/ExamTaking";
 import ExamResults from "./app/student/ExamResults";
 import ExamReview from "./app/student/ExamReview";
-import Contact from "./app/contact/Contact";
+import Help from "./app/help/Help";
 import { StudentLayout } from "./components/layout/StudentLayout";
 import { AdminRoute, StudentRoute } from "./components/auth/ProtectedRoute";
 import "./App.css";
@@ -162,6 +163,16 @@ function App() {
             }
           />
 
+          {/* Notification Management Routes */}
+          <Route
+            path="/admin/notifications"
+            element={
+              <AdminRoute>
+                <NotificationManagement />
+              </AdminRoute>
+            }
+          />
+
           {/* Student Exam Routes */}
           <Route
             path="/exam-room"
@@ -215,11 +226,11 @@ function App() {
             }
           />
           <Route
-            path="/contact"
+            path="/help"
             element={
               <StudentRoute>
                 <StudentLayout>
-                  <Contact />
+                  <Help />
                 </StudentLayout>
               </StudentRoute>
             }

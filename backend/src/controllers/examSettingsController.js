@@ -11,6 +11,7 @@ const getExamSettings = async (req, res) => {
         timeLimit: settings.timeLimit,
         numberOfQuestions: settings.numberOfQuestions,
         passingScore: settings.passingScore,
+        faceVerificationIntervalMinutes: settings.faceVerificationIntervalMinutes,
         lastUpdated: settings.lastUpdated,
         updatedBy: settings.updatedBy,
       },
@@ -28,7 +29,7 @@ const getExamSettings = async (req, res) => {
 // Update exam settings
 const updateExamSettings = async (req, res) => {
   try {
-    const { timeLimit, numberOfQuestions, passingScore } = req.body;
+    const { timeLimit, numberOfQuestions, passingScore, faceVerificationIntervalMinutes } = req.body;
 
     // Validate input
     if (timeLimit && (timeLimit < 1 || timeLimit > 480)) {
@@ -55,6 +56,13 @@ const updateExamSettings = async (req, res) => {
       });
     }
 
+    if (faceVerificationIntervalMinutes && (faceVerificationIntervalMinutes < 1 || faceVerificationIntervalMinutes > 60)) {
+      return res.status(400).json({
+        success: false,
+        message: "Face verification interval must be between 1 and 60 minutes",
+      });
+    }
+
     // Get current settings or create new one
     let settings = await ExamSettings.findOne();
 
@@ -67,6 +75,8 @@ const updateExamSettings = async (req, res) => {
     if (numberOfQuestions !== undefined)
       settings.numberOfQuestions = numberOfQuestions;
     if (passingScore !== undefined) settings.passingScore = passingScore;
+    if (faceVerificationIntervalMinutes !== undefined)
+      settings.faceVerificationIntervalMinutes = faceVerificationIntervalMinutes;
 
     settings.lastUpdated = new Date();
     settings.updatedBy = req.user?.username || req.user?.email || "admin";
@@ -80,6 +90,7 @@ const updateExamSettings = async (req, res) => {
         timeLimit: settings.timeLimit,
         numberOfQuestions: settings.numberOfQuestions,
         passingScore: settings.passingScore,
+        faceVerificationIntervalMinutes: settings.faceVerificationIntervalMinutes,
         lastUpdated: settings.lastUpdated,
         updatedBy: settings.updatedBy,
       },

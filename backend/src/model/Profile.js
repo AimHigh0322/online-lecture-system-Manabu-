@@ -30,6 +30,12 @@ const profileSchema = new mongoose.Schema(
       type: [Number], // an array of numbers from face-api.js
       default: [],
     },
+    // Favorites: array of material IDs that user has favorited
+    favorites: {
+      type: [String],
+      default: [],
+      index: true,
+    },
   },
   {
     timestamps: true,

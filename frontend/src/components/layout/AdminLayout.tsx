@@ -10,8 +10,11 @@ import {
   Cog,
   Award,
   FilePlus,
+  BookOpen,
+  Bell,
 } from "lucide-react";
 import { logout } from "../../api/auth/authService";
+import { NotificationIcon } from "../atom/NotificationIcon";
 
 interface BossLayoutProps {
   children: ReactNode;
@@ -72,6 +75,13 @@ export const BossLayout: React.FC<BossLayoutProps> = ({ children }) => {
       active: location.pathname === "/material-upload",
     },
     {
+      id: "question-management",
+      label: "試験問題管理",
+      icon: BookOpen,
+      path: "/admin/question-management",
+      active: location.pathname === "/admin/question-management",
+    },
+    {
       id: "create-exam-question",
       label: "試験問題作成",
       icon: FilePlus,
@@ -99,6 +109,13 @@ export const BossLayout: React.FC<BossLayoutProps> = ({ children }) => {
       path: "/admin/certificate-generator",
       active: location.pathname === "/admin/certificate-generator",
     },
+    {
+      id: "notifications",
+      label: "通知管理",
+      icon: Bell,
+      path: "/admin/notifications",
+      active: location.pathname === "/admin/notifications",
+    },
   ];
 
   return (
@@ -123,8 +140,12 @@ export const BossLayout: React.FC<BossLayoutProps> = ({ children }) => {
             </h1>
           </div>
 
-          {/* Right side - Logout */}
+          {/* Right side - Notifications and Logout */}
           <div className="flex items-center space-x-4">
+            {/* Notification Icon */}
+            <div className="hidden sm:block">
+              <NotificationIcon />
+            </div>
             {/* Logout Button */}
             <button
               onClick={handleLogout}

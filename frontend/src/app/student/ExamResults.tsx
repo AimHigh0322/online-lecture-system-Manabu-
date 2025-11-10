@@ -113,9 +113,9 @@ export const ExamResults: React.FC = () => {
                 </p>
               </div>
               <div className="text-center">
-                <p className="text-sm text-gray-600">正解率</p>
+                <p className="text-sm text-gray-600">正答数</p>
                 <p className="text-xl font-bold text-gray-900">
-                  {examResults.percentage}%
+                  {examResults.score}
                 </p>
               </div>
               <div className="text-center">

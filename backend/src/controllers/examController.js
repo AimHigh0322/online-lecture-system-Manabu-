@@ -1,6 +1,8 @@
 const StandaloneQuestion = require("../model/StandaloneQuestion");
 const ExamHistory = require("../model/ExamHistory");
 const ExamSettings = require("../model/ExamSettings");
+const Exam = require("../model/Exam");
+const mongoose = require("mongoose");
 
 // Submit exam and store results
 const submitExam = async (req, res) => {
@@ -9,9 +11,9 @@ const submitExam = async (req, res) => {
       examineeId,
       examId,
       answers,
-      totalQuestions,
       timeSpent,
       submittedAt,
+      totalQuestions: requestTotalQuestions,
     } = req.body;
 
     const user = req.user;
@@ -21,23 +23,49 @@ const submitExam = async (req, res) => {
     console.log("Exam ID:", examId);
     console.log("User ID:", user.id);
     console.log("Number of answers:", answers.length);
+    console.log("Request totalQuestions:", requestTotalQuestions);
     console.log("Answers:", JSON.stringify(answers, null, 2));
     console.log("=================================");
 
-    // Get all questions to calculate results
-    const allQuestions = await StandaloneQuestion.find({ isActive: true });
-    const totalQuestionsInDB = allQuestions.length;
-
-    // Get exam settings for time limit and number of questions
+    // Get exam settings for time limit and passing score
     const examSettings = await ExamSettings.getSettings();
     const timeLimitMinutes = examSettings.timeLimit || 60; // Default to 60 minutes
-    const numberOfQuestions = examSettings.numberOfQuestions || 20; // Default to 20 questions
+
+    // Get the exam to retrieve total questions count (admin-submitted questions)
+    // Only try to find exam if examId is a valid MongoDB ObjectId
+    let exam = null;
+    if (examId && mongoose.Types.ObjectId.isValid(examId)) {
+      try {
+        exam = await Exam.findById(examId);
+      } catch (error) {
+        console.warn("Failed to find exam by ID:", examId, error.message);
+        exam = null;
+      }
+    }
+
+    // Get question IDs from examinee answers (these are the actual questions that were presented)
+    const questionIds = answers.map((answer) => answer.questionId);
+
+    // Get only the questions that were actually presented to the examinee
+    const presentedQuestions = await StandaloneQuestion.find({
+      _id: { $in: questionIds },
+      isActive: true,
+    });
+
+    // Use totalQuestions from exam (admin-submitted questions) or from request
+    // Priority: exam.totalQuestions > requestTotalQuestions > presentedQuestions.length
+    // This ensures the score is calculated as: correct answers / admin-submitted questions
+    const totalQuestions =
+      exam?.totalQuestions ||
+      requestTotalQuestions ||
+      presentedQuestions.length;
 
     let totalScore = 0;
     const gradedAnswers = [];
 
     console.log("=== GRADING PROCESS ===");
-    console.log("Total questions in database:", totalQuestionsInDB);
+    console.log("Total questions (admin-submitted):", totalQuestions);
+    console.log("Questions presented to examinee:", presentedQuestions.length);
     console.log("Questions answered by examinee:", answers.length);
 
     // Create a map of examinee answers for quick lookup
@@ -46,9 +74,19 @@ const submitExam = async (req, res) => {
       examineeAnswersMap.set(answer.questionId, answer);
     });
 
-    // Grade only the questions that were submitted to the examinee (limited by numberOfQuestions setting)
-    const questionsToGrade = allQuestions.slice(0, numberOfQuestions);
-    for (const question of questionsToGrade) {
+    // Create a map of questions for quick lookup
+    const questionsMap = new Map();
+    presentedQuestions.forEach((question) => {
+      questionsMap.set(question._id.toString(), question);
+    });
+
+    // Grade only the questions that were presented to the examinee
+    for (const questionId of questionIds) {
+      const question = questionsMap.get(questionId);
+      if (!question) {
+        console.warn(`Question ${questionId} not found, skipping`);
+        continue;
+      }
       console.log("Grading question ID:", question._id);
       console.log("Found question:", question.content);
       console.log("Question type:", question.type);
@@ -130,22 +168,21 @@ const submitExam = async (req, res) => {
       });
     }
 
-    // Calculate percentage based on correct answers divided by number of questions in exam
+    // Calculate percentage based on correct answers divided by total questions (admin-submitted)
     const percentage =
-      numberOfQuestions > 0
-        ? Math.round((totalScore / numberOfQuestions) * 100)
-        : 0;
+      totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0;
     const passed = percentage >= examSettings.passingScore;
 
     console.log("=== GRADING RESULTS ===");
     console.log("Total Score:", totalScore);
-    console.log("Questions in Exam:", numberOfQuestions);
+    console.log("Total Questions (admin-submitted):", totalQuestions);
+    console.log("Questions presented to examinee:", presentedQuestions.length);
     console.log("Percentage:", percentage + "%");
     console.log("Passing Score:", examSettings.passingScore + "%");
     console.log("Passed:", passed);
     console.log(
-      "Score divided by exam questions:",
-      totalScore + "/" + numberOfQuestions
+      "Score divided by total questions (admin-submitted):",
+      totalScore + "/" + totalQuestions
     );
 
     // Store exam results in the database
@@ -154,7 +191,7 @@ const submitExam = async (req, res) => {
       examineeName: user.username || user.email,
       answers: gradedAnswers,
       score: totalScore,
-      totalQuestions: numberOfQuestions,
+      totalQuestions: totalQuestions,
       percentage: percentage,
       passed: passed,
       passingGrade: examSettings.passingScore,

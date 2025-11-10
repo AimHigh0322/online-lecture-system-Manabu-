@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Trash2,
@@ -10,6 +10,7 @@ import {
   UserX,
 } from "lucide-react";
 import { BossLayout } from "../../components/layout/AdminLayout";
+import { Pagination } from "../../components/atom/Pagination";
 import {
   getAuthToken,
   isAuthenticated,
@@ -58,6 +59,9 @@ export const StudentManagement: React.FC = () => {
   } | null>(null);
   const [sortField, setSortField] = useState<keyof StudentProfile | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  // Pagination state - 6 items per page
+  const [page, setPage] = useState(1);
+  const pageSize = 6;
 
   const fetchStudents = React.useCallback(async () => {
     try {
@@ -122,35 +126,56 @@ export const StudentManagement: React.FC = () => {
     return matchesSearch;
   });
 
-  const sortedStudents = [...filteredStudents].sort((a, b) => {
-    if (!sortField) return 0;
+  const sortedStudents = useMemo(() => {
+    return [...filteredStudents].sort((a, b) => {
+      if (!sortField) return 0;
 
-    const aValue = a[sortField];
-    const bValue = b[sortField];
+      const aValue = a[sortField];
+      const bValue = b[sortField];
 
-    // Handle different data types
-    if (typeof aValue === "string" && typeof bValue === "string") {
-      const comparison = aValue
-        .toLowerCase()
-        .localeCompare(bValue.toLowerCase());
-      return sortDirection === "asc" ? comparison : -comparison;
+      // Handle different data types
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        const comparison = aValue
+          .toLowerCase()
+          .localeCompare(bValue.toLowerCase());
+        return sortDirection === "asc" ? comparison : -comparison;
+      }
+
+      if (typeof aValue === "boolean" && typeof bValue === "boolean") {
+        const comparison = aValue === bValue ? 0 : aValue ? 1 : -1;
+        return sortDirection === "asc" ? comparison : -comparison;
+      }
+
+      // Handle dates
+      if (aValue && bValue) {
+        const dateA = new Date(aValue as string);
+        const dateB = new Date(bValue as string);
+        const comparison = dateA.getTime() - dateB.getTime();
+        return sortDirection === "asc" ? comparison : -comparison;
+      }
+
+      return 0;
+    });
+  }, [filteredStudents, sortField, sortDirection]);
+
+  // Pagination calculations
+  const totalPages = Math.max(1, Math.ceil(sortedStudents.length / pageSize));
+  const startIndex = (page - 1) * pageSize;
+  const pagedStudents = useMemo(() => {
+    return sortedStudents.slice(startIndex, startIndex + pageSize);
+  }, [sortedStudents, startIndex, pageSize]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, sortField, sortDirection]);
+
+  // Ensure page is within bounds
+  useEffect(() => {
+    if (page > totalPages && totalPages > 0) {
+      setPage(totalPages);
     }
-
-    if (typeof aValue === "boolean" && typeof bValue === "boolean") {
-      const comparison = aValue === bValue ? 0 : aValue ? 1 : -1;
-      return sortDirection === "asc" ? comparison : -comparison;
-    }
-
-    // Handle dates
-    if (aValue && bValue) {
-      const dateA = new Date(aValue as string);
-      const dateB = new Date(bValue as string);
-      const comparison = dateA.getTime() - dateB.getTime();
-      return sortDirection === "asc" ? comparison : -comparison;
-    }
-
-    return 0;
-  });
+  }, [totalPages, page]);
 
   const handleSort = (field: keyof StudentProfile) => {
     if (sortField === field) {
@@ -378,7 +403,7 @@ export const StudentManagement: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {sortedStudents.map((student) => (
+                {pagedStudents.map((student) => (
                   <tr key={student.id} className="hover:bg-slate-50">
                     <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center space-x-3">
@@ -502,11 +527,20 @@ export const StudentManagement: React.FC = () => {
               </p>
             </div>
           )}
+
+          {/* Pagination - only show if more than 6 items */}
+          {sortedStudents.length > 6 && totalPages > 1 && (
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onChange={(p) => setPage(p)}
+            />
+          )}
         </div>
 
         {/* Student Detail Modal */}
         {showDetailModal && selectedStudent && (
-          <div className="fixed inset-0 bg-black/50 bg-opacity-30 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/60 bg-opacity-30 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-bold text-slate-800">
@@ -634,7 +668,7 @@ export const StudentManagement: React.FC = () => {
 
         {/* Confirm Modal */}
         {showConfirmModal && confirmAction && (
-          <div className="fixed inset-0 bg-black/50 bg-opacity-30 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/60 bg-opacity-30 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
               <div className="text-center">
                 <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">

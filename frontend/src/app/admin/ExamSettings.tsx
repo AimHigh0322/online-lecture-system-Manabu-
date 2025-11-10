@@ -8,6 +8,7 @@ import {
   ArrowLeft,
   AlertCircle,
   CheckCircle,
+  Camera,
 } from "lucide-react";
 import { AdminLayout } from "../../components/layout";
 import { useToast } from "../../hooks/useToast";
@@ -16,6 +17,7 @@ interface ExamSettings {
   timeLimit: number; // in minutes
   numberOfQuestions: number;
   passingScore: number; // percentage
+  faceVerificationIntervalMinutes: number; // face verification interval in minutes
 }
 
 const ExamSettingsPage: React.FC = () => {
@@ -26,6 +28,7 @@ const ExamSettingsPage: React.FC = () => {
     timeLimit: 60,
     numberOfQuestions: 20,
     passingScore: 70,
+    faceVerificationIntervalMinutes: 15,
   });
 
   const [loading, setLoading] = useState(true);
@@ -88,6 +91,10 @@ const ExamSettingsPage: React.FC = () => {
       newErrors.passingScore = 1;
     }
 
+    if (settings.faceVerificationIntervalMinutes < 1 || settings.faceVerificationIntervalMinutes > 60) {
+      newErrors.faceVerificationIntervalMinutes = 1;
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -148,7 +155,8 @@ const ExamSettingsPage: React.FC = () => {
     if (
       field === "timeLimit" ||
       field === "numberOfQuestions" ||
-      field === "passingScore"
+      field === "passingScore" ||
+      field === "faceVerificationIntervalMinutes"
     ) {
       const numValue = parseInt(value.toString()) || 0;
       setSettings((prev) => ({
@@ -303,6 +311,41 @@ const ExamSettingsPage: React.FC = () => {
                 )}
                 <p className="mt-1 text-sm text-gray-500">推奨: 70%</p>
               </div>
+
+              {/* Face Verification Interval */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Camera className="w-4 h-4 inline mr-2" />
+                  顔認証間隔（分） *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="60"
+                  value={settings.faceVerificationIntervalMinutes}
+                  onChange={(e) =>
+                    handleInputChange(
+                      "faceVerificationIntervalMinutes",
+                      parseInt(e.target.value) || 0
+                    )
+                  }
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
+                    errors.faceVerificationIntervalMinutes
+                      ? "border-red-500"
+                      : "border-gray-300"
+                  }`}
+                  placeholder="15"
+                />
+                {errors.faceVerificationIntervalMinutes && (
+                  <p className="mt-2 text-sm text-red-600 flex items-center">
+                    <AlertCircle className="w-4 h-4 mr-1" />
+                    1分から60分の間で設定してください
+                  </p>
+                )}
+                <p className="mt-1 text-sm text-gray-500">
+                  推奨: 15分（試験中に15分ごとに顔認証確認が行われます）
+                </p>
+              </div>
             </div>
           </div>
 
@@ -326,7 +369,7 @@ const ExamSettingsPage: React.FC = () => {
           <h3 className="text-lg font-semibold text-blue-900 mb-4">
             現在の設定
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-white p-4 rounded-lg">
               <div className="flex items-center">
                 <Clock className="w-5 h-5 text-orange-600 mr-2" />
@@ -352,6 +395,15 @@ const ExamSettingsPage: React.FC = () => {
               </div>
               <p className="text-2xl font-bold text-orange-600 mt-1">
                 {settings.passingScore}%
+              </p>
+            </div>
+            <div className="bg-white p-4 rounded-lg">
+              <div className="flex items-center">
+                <Camera className="w-5 h-5 text-orange-600 mr-2" />
+                <span className="font-medium text-gray-900">顔認証間隔</span>
+              </div>
+              <p className="text-2xl font-bold text-orange-600 mt-1">
+                {settings.faceVerificationIntervalMinutes}分
               </p>
             </div>
           </div>

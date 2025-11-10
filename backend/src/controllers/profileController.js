@@ -416,10 +416,102 @@ const changePassword = async (req, res) => {
   }
 };
 
+/**
+ * Toggle favorite material for user
+ * @route POST /api/profile/favorites
+ */
+const toggleFavorite = async (req, res) => {
+  try {
+    const { userId } = req.user;
+    const { materialId } = req.body;
+
+    if (!materialId) {
+      return res.status(400).json({
+        success: false,
+        message: "教材IDが必要です",
+      });
+    }
+
+    // Find or create profile
+    let profile = await Profile.findOne({ userId });
+
+    if (!profile) {
+      profile = new Profile({
+        userId,
+        favorites: [],
+      });
+    }
+
+    // Toggle favorite
+    const favoriteIndex = profile.favorites.indexOf(materialId);
+    if (favoriteIndex > -1) {
+      // Remove from favorites
+      profile.favorites.splice(favoriteIndex, 1);
+      await profile.save();
+      return res.status(200).json({
+        success: true,
+        message: "お気に入りから削除しました",
+        isFavorite: false,
+        favorites: profile.favorites,
+      });
+    } else {
+      // Add to favorites
+      profile.favorites.push(materialId);
+      await profile.save();
+      return res.status(200).json({
+        success: true,
+        message: "お気に入りに追加しました",
+        isFavorite: true,
+        favorites: profile.favorites,
+      });
+    }
+  } catch (error) {
+    console.error("Error toggling favorite:", error);
+    res.status(500).json({
+      success: false,
+      message: "お気に入りの更新に失敗しました",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get user favorites
+ * @route GET /api/profile/favorites
+ */
+const getFavorites = async (req, res) => {
+  try {
+    const { userId } = req.user;
+
+    const profile = await Profile.findOne({ userId });
+
+    if (!profile) {
+      return res.status(200).json({
+        success: true,
+        favorites: [],
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      favorites: profile.favorites || [],
+    });
+  } catch (error) {
+    console.error("Error getting favorites:", error);
+    res.status(500).json({
+      success: false,
+      message: "お気に入りの取得に失敗しました",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getProfile,
   updateProfile,
   uploadAvatar,
   deleteAvatar,
   changePassword,
+  toggleFavorite,
+  getFavorites,
 };

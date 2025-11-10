@@ -53,6 +53,18 @@ export {
   useCheckExamEligibilityMutation,
 } from "./exam/examApiSlice";
 
+// Export notification API
+export {
+  notificationApiSlice,
+  useGetNotificationsQuery,
+  useGetUnreadCountQuery,
+  useSendNotificationMutation,
+  useSendNotificationToAllMutation,
+  useMarkAsReadMutation,
+  useMarkAllAsReadMutation,
+  useDeleteNotificationMutation,
+} from "./notifications/notificationApiSlice";
+
 export type {
   Question,
   QuestionFormData,
@@ -89,6 +101,14 @@ export type {
   ExamErrors,
   QuestionErrors,
 } from "./exam/examTypes";
+
+export type {
+  Notification,
+  NotificationResponse,
+  SendNotificationRequest,
+  SendNotificationToAllRequest,
+  UnreadCountResponse,
+} from "./notifications/notificationApiSlice";
 
 // Export constants
 export {

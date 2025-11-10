@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Search, Filter } from "lucide-react";
 import { EditExamModal } from "../../components/molecules";
 import { ConfirmModal } from "../../components/atom/ConfirmModal";
+import { Pagination } from "../../components/atom/Pagination";
 import { AdminLayout } from "../../components/layout";
 
 interface ExamHistory {
@@ -26,7 +27,7 @@ export const ExamManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(6); // Changed from 10 to 6
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [editingHistory, setEditingHistory] = useState<ExamHistory | null>(
@@ -107,48 +108,61 @@ export const ExamManagement: React.FC = () => {
   });
 
   // Sort the filtered histories
-  const sortedHistories = [...filteredHistories].sort((a, b) => {
-    if (!sortField) return 0;
+  const sortedHistories = useMemo(() => {
+    return [...filteredHistories].sort((a, b) => {
+      if (!sortField) return 0;
 
-    let aValue: string | number | Date;
-    let bValue: string | number | Date;
+      let aValue: string | number | Date;
+      let bValue: string | number | Date;
 
-    switch (sortField) {
-      case "examineeName":
-        aValue = a.examineeName;
-        bValue = b.examineeName;
-        break;
-      case "score":
-        aValue = a.score;
-        bValue = b.score;
-        break;
-      case "percentage":
-        aValue = a.percentage;
-        bValue = b.percentage;
-        break;
-      case "timeSpent":
-        aValue = a.timeSpent;
-        bValue = b.timeSpent;
-        break;
-      case "submittedAt":
-        aValue = new Date(a.submittedAt);
-        bValue = new Date(b.submittedAt);
-        break;
-      default:
-        return 0;
-    }
+      switch (sortField) {
+        case "examineeName":
+          aValue = a.examineeName;
+          bValue = b.examineeName;
+          break;
+        case "score":
+          aValue = a.score;
+          bValue = b.score;
+          break;
+        case "percentage":
+          aValue = a.percentage;
+          bValue = b.percentage;
+          break;
+        case "timeSpent":
+          aValue = a.timeSpent;
+          bValue = b.timeSpent;
+          break;
+        case "submittedAt":
+          aValue = new Date(a.submittedAt);
+          bValue = new Date(b.submittedAt);
+          break;
+        default:
+          return 0;
+      }
 
-    if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
-    if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
-    return 0;
-  });
+      if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [filteredHistories, sortField, sortDirection]);
 
-  const totalPages = Math.ceil(sortedHistories.length / itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(sortedHistories.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedHistories = sortedHistories.slice(
-    startIndex,
-    startIndex + itemsPerPage
-  );
+  const paginatedHistories = useMemo(() => {
+    return sortedHistories.slice(startIndex, startIndex + itemsPerPage);
+  }, [sortedHistories, startIndex, itemsPerPage]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterStatus, sortField, sortDirection]);
+
+  // Ensure page is within bounds
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
 
   const handleEdit = (history: ExamHistory) => {
     setEditingHistory(history);
@@ -418,66 +432,13 @@ export const ExamManagement: React.FC = () => {
               </table>
             </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-                <div className="flex-1 flex justify-between sm:hidden">
-                  <button
-                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                    disabled={currentPage === 1}
-                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                  >
-                    前へ
-                  </button>
-                  <button
-                    onClick={() =>
-                      setCurrentPage(Math.min(totalPages, currentPage + 1))
-                    }
-                    disabled={currentPage === totalPages}
-                    className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                  >
-                    次へ
-                  </button>
-                </div>
-                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm text-gray-700">
-                      <span className="font-medium">{startIndex + 1}</span>
-                      から
-                      <span className="font-medium">
-                        {Math.min(
-                          startIndex + itemsPerPage,
-                          filteredHistories.length
-                        )}
-                      </span>
-                      まで表示（全
-                      <span className="font-medium">
-                        {filteredHistories.length}
-                      </span>
-                      件中）
-                    </p>
-                  </div>
-                  <div>
-                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                        (page) => (
-                          <button
-                            key={page}
-                            onClick={() => setCurrentPage(page)}
-                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium cursor-pointer ${
-                              page === currentPage
-                                ? "z-10 bg-orange-50 border-orange-500 text-orange-600"
-                                : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
-                            }`}
-                          >
-                            {page}
-                          </button>
-                        )
-                      )}
-                    </nav>
-                  </div>
-                </div>
-              </div>
+            {/* Pagination - only show if more than 6 items */}
+            {sortedHistories.length > 6 && totalPages > 1 && (
+              <Pagination
+                page={currentPage}
+                totalPages={totalPages}
+                onChange={(p) => setCurrentPage(p)}
+              />
             )}
           </div>
         </div>

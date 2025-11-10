@@ -7,6 +7,8 @@ const {
   uploadAvatar,
   deleteAvatar,
   changePassword,
+  toggleFavorite,
+  getFavorites,
 } = require("../../controllers/profileController");
 
 const router = express.Router();
@@ -25,5 +27,11 @@ router.delete("/avatar", verifyToken, deleteAvatar);
 
 // Change password (protected route)
 router.put("/password", verifyToken, changePassword);
+
+// Toggle favorite material (protected route)
+router.post("/favorites", verifyToken, toggleFavorite);
+
+// Get user favorites (protected route)
+router.get("/favorites", verifyToken, getFavorites);
 
 module.exports = router;
