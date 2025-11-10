@@ -1,5 +1,5 @@
 // src/app/profile/ProfileManagement.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   UserCircle,
@@ -16,6 +16,8 @@ import {
   IdCard,
   Eye,
   EyeOff,
+  FileDown,
+  Loader2,
 } from "lucide-react";
 import {
   getStoredUser,
@@ -24,6 +26,9 @@ import {
 } from "../../api/auth/authService";
 import { Select, ConfirmModal } from "../../components/atom";
 import { useToast } from "../../hooks/useToast";
+import { useGetCertificateQuery } from "../../api/certificates/certificateApiSlice";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 // Profile data interface
 interface LectureProgress {
   materialName: string;
@@ -79,6 +84,27 @@ export const ProfileManagement: React.FC = () => {
   const [showNewPw, setShowNewPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [expandPassword, setExpandPassword] = useState(true);
+  const [isGeneratingCertificate, setIsGeneratingCertificate] = useState(false);
+  const certificateRef = useRef<HTMLDivElement>(null);
+
+  // Get certificate data from database
+  const {
+    data: certificate,
+    isLoading: isLoadingCertificate,
+    error: certificateError,
+  } = useGetCertificateQuery(userId, {
+    skip: !userId,
+  });
+
+  // Debug: Check certificate data
+  useEffect(() => {
+    console.log("=== Certificate Debug ===");
+    console.log("userId:", userId);
+    console.log("isLoadingCertificate:", isLoadingCertificate);
+    console.log("certificate:", certificate);
+    console.log("certificateError:", certificateError);
+    console.log("========================");
+  }, [userId, isLoadingCertificate, certificate, certificateError]);
 
   const getPasswordStrength = (pw: string) => {
     let score = 0;
@@ -327,6 +353,125 @@ export const ProfileManagement: React.FC = () => {
     await handleSave();
   };
 
+  const formatDateForDisplay = (dateString: string): string => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+  };
+
+  const formatDateForTable = (dateString: string): string => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
+  };
+
+  const handleDownloadCertificate = async () => {
+    if (!certificate) {
+      showToast({
+        type: "error",
+        title: "エラー",
+        message: "修了証が見つかりません",
+        duration: 3000,
+      });
+      return;
+    }
+
+    setIsGeneratingCertificate(true);
+
+    try {
+      if (!certificateRef.current) {
+        throw new Error("Certificate element not found");
+      }
+
+      const originalDisplay = certificateRef.current.style.display;
+      certificateRef.current.style.display = "block";
+
+      // Wait for background image to load
+      await new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(void 0);
+        img.onerror = () => resolve(void 0);
+        img.src = "/img/certificate.png";
+        setTimeout(() => resolve(void 0), 3000);
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      const certWidth = certificateRef.current.offsetWidth;
+      const certHeight =
+        certificateRef.current.scrollHeight ||
+        certificateRef.current.offsetHeight;
+
+      const scale = 3;
+      const canvas = await html2canvas(certificateRef.current, {
+        scale: scale,
+        useCORS: true,
+        allowTaint: false,
+        logging: false,
+        backgroundColor: null,
+        width: certWidth,
+        height: certHeight,
+        windowWidth: certWidth,
+        windowHeight: certHeight,
+        onclone: (clonedDoc) => {
+          const clonedElement = clonedDoc.querySelector(
+            ".certificate-container"
+          ) as HTMLElement;
+          if (clonedElement) {
+            clonedElement.style.backgroundImage = "url('/img/certificate.png')";
+            clonedElement.style.backgroundSize = "100% 100%";
+            clonedElement.style.backgroundPosition = "top left";
+            clonedElement.style.backgroundRepeat = "no-repeat";
+          }
+        },
+      });
+
+      certificateRef.current.style.display = originalDisplay;
+
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: [182, 257], // JIS B5 size
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+
+      const imgData = canvas.toDataURL("image/png", 1.0);
+
+      pdf.addImage(
+        imgData,
+        "PNG",
+        0,
+        0,
+        pdfWidth,
+        pdfHeight,
+        undefined,
+        "FAST"
+      );
+
+      const filename = `修了証_${certificate.name}_${certificate.certificateNumber}.pdf`;
+      pdf.save(filename);
+
+      setIsGeneratingCertificate(false);
+      showToast({
+        type: "success",
+        title: "成功",
+        message: "修了証をダウンロードしました",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error("Error generating certificate:", error);
+      showToast({
+        type: "error",
+        title: "エラー",
+        message: "修了証の生成中にエラーが発生しました",
+        duration: 3000,
+      });
+      setIsGeneratingCertificate(false);
+    }
+  };
+
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -405,9 +550,49 @@ export const ProfileManagement: React.FC = () => {
   return (
     <div className="p-6">
       {/* Page Header */}
-      <div className="mb-6">
-        <h2 className="text-3xl font-bold text-slate-800">プロフィール管理</h2>
-        <p className="text-slate-600 mt-1">アカウント情報を管理できます</p>
+      <div className="mb-6 flex justify-between items-center">
+        <div>
+          <h2 className="text-3xl font-bold text-slate-800">
+            プロフィール管理
+          </h2>
+          <p className="text-slate-600 mt-1">アカウント情報を管理できます</p>
+        </div>
+        {/* Show download button only if certificate exists in database */}
+        {isLoadingCertificate ? (
+          <div className="flex items-center space-x-2 px-4 py-2 text-slate-600">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>確認中...</span>
+          </div>
+        ) : certificate ? (
+          <button
+            onClick={handleDownloadCertificate}
+            disabled={isGeneratingCertificate}
+            className="flex items-center space-x-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isGeneratingCertificate ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>生成中...</span>
+              </>
+            ) : (
+              <>
+                <FileDown className="w-4 h-4" />
+                <span>修了証ダウンロード</span>
+              </>
+            )}
+          </button>
+        ) : (
+          <div className="text-xs text-slate-400">
+            {/* Debug: Remove this in production */}
+            {import.meta.env.DEV && (
+              <div>
+                No certificate (userId: {userId || "none"})
+                {certificateError &&
+                  ` - Error: ${JSON.stringify(certificateError)}`}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Single Column Layout */}
@@ -1000,6 +1185,237 @@ export const ProfileManagement: React.FC = () => {
         confirmButtonClass="bg-emerald-600 hover:bg-emerald-700"
         isLoading={isUpdating || isUploadingAvatar}
       />
+
+      {/* Hidden Certificate Element for PDF Generation */}
+      {certificate && (
+        <div
+          style={{
+            position: "absolute",
+            left: "-9999px",
+            top: "-9999px",
+            visibility: "hidden",
+          }}
+        >
+          <div
+            ref={certificateRef}
+            className="certificate-container"
+            style={{
+              width: "182mm",
+              minHeight: "257mm",
+              position: "relative",
+              backgroundColor: "#ffffff",
+              backgroundImage: "url('/img/certificate.png')",
+              backgroundSize: "100% 100%",
+              backgroundPosition: "top left",
+              backgroundRepeat: "no-repeat",
+              fontFamily:
+                "'MS PGothic', 'Hiragino Kaku Gothic ProN', sans-serif",
+            }}
+          >
+            {/* Content Area */}
+            <div
+              style={{
+                padding: "40mm 30mm 30mm 30mm",
+                position: "relative",
+                zIndex: 1,
+              }}
+            >
+              {/* Title - Centered at top */}
+              <div
+                style={{
+                  textAlign: "center",
+                  fontSize: "48px",
+                  fontWeight: "bold",
+                  marginBottom: "40px",
+                  letterSpacing: "4px",
+                  color: "#000000",
+                }}
+              >
+                修了証書
+              </div>
+
+              {/* Information Table */}
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  border: "1px solid #000",
+                  marginBottom: "20px",
+                  tableLayout: "fixed",
+                  fontSize: "18px",
+                }}
+              >
+                {/* Header Row 1 */}
+                <thead>
+                  <tr>
+                    <th
+                      style={{
+                        border: "1px solid #000",
+                        padding: "15px 10px",
+                        backgroundColor: "#f5f5f5",
+                        fontSize: "18px",
+                        fontWeight: "normal",
+                        width: "25%",
+                        textAlign: "center",
+                        verticalAlign: "middle",
+                      }}
+                    >
+                      受講者名
+                    </th>
+                    <th
+                      style={{
+                        border: "1px solid #000",
+                        padding: "15px 10px",
+                        backgroundColor: "#f5f5f5",
+                        fontSize: "18px",
+                        fontWeight: "normal",
+                        width: "15%",
+                        textAlign: "center",
+                        verticalAlign: "middle",
+                      }}
+                    >
+                      性別
+                    </th>
+                    <th
+                      style={{
+                        border: "1px solid #000",
+                        padding: "15px 10px",
+                        backgroundColor: "#f5f5f5",
+                        fontSize: "18px",
+                        fontWeight: "normal",
+                        width: "25%",
+                        textAlign: "center",
+                        verticalAlign: "middle",
+                      }}
+                    >
+                      {formatDateForTable(
+                        certificate.issueDate || certificate.startDate
+                      )}
+                    </th>
+                    <th
+                      style={{
+                        border: "1px solid #000",
+                        padding: "15px 10px",
+                        backgroundColor: "#f5f5f5",
+                        fontSize: "18px",
+                        fontWeight: "normal",
+                        width: "35%",
+                        textAlign: "center",
+                        verticalAlign: "middle",
+                      }}
+                    >
+                      受講時間数
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Data Row 1 */}
+                  <tr>
+                    <td
+                      style={{
+                        border: "1px solid #000",
+                        padding: "15px 10px",
+                        fontSize: "18px",
+                        textAlign: "center",
+                        verticalAlign: "middle",
+                        fontWeight: "500",
+                      }}
+                    >
+                      {certificate.name}
+                    </td>
+                    <td
+                      style={{
+                        border: "1px solid #000",
+                        padding: "15px 10px",
+                        fontSize: "18px",
+                        textAlign: "center",
+                        verticalAlign: "middle",
+                        fontWeight: "500",
+                      }}
+                    >
+                      {certificate.gender}
+                    </td>
+                    <td
+                      style={{
+                        border: "1px solid #000",
+                        padding: "15px 10px",
+                        fontSize: "18px",
+                        textAlign: "center",
+                        verticalAlign: "middle",
+                        fontWeight: "500",
+                      }}
+                    >
+                      ミャンマー
+                    </td>
+                    <td
+                      style={{
+                        border: "1px solid #000",
+                        padding: "15px 10px",
+                        fontSize: "18px",
+                        textAlign: "center",
+                        verticalAlign: "middle",
+                        fontWeight: "500",
+                      }}
+                    >
+                      174時間
+                    </td>
+                  </tr>
+                  {/* Header Row 2 - Study Period */}
+                  <tr>
+                    <td
+                      colSpan={4}
+                      style={{
+                        border: "1px solid #000",
+                        padding: "15px 10px",
+                        backgroundColor: "#f5f5f5",
+                        fontSize: "18px",
+                        fontWeight: "normal",
+                        textAlign: "center",
+                        verticalAlign: "middle",
+                      }}
+                    >
+                      受講期間
+                    </td>
+                  </tr>
+                  {/* Data Row 2 - Study Period Dates */}
+                  <tr>
+                    <td
+                      colSpan={4}
+                      style={{
+                        border: "1px solid #000",
+                        padding: "15px 10px",
+                        fontSize: "18px",
+                        textAlign: "center",
+                        verticalAlign: "middle",
+                        fontWeight: "500",
+                      }}
+                    >
+                      {formatDateForDisplay(certificate.startDate)} ～{" "}
+                      {formatDateForDisplay(certificate.endDate)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              {/* Certificate Statement */}
+              <div
+                style={{
+                  fontSize: "20px",
+                  lineHeight: "2.5",
+                  textAlign: "left",
+                  marginTop: "30px",
+                  marginBottom: "50px",
+                  fontWeight: "normal",
+                  color: "#000000",
+                }}
+              >
+                <div>上記の者は本校で規定の講習を</div>
+                <div>修了したことを証する</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

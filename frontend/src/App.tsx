@@ -14,7 +14,6 @@ import ExamQuestionManagement from "./app/admin/ExamQuestionManagement";
 import ExamQuestionForm from "./app/admin/ExamQuestionForm";
 import ExamManagement from "./app/admin/ExamManagement";
 import ExamSettings from "./app/admin/ExamSettings";
-import CertificateGenerator from "./app/admin/CertificateGenerator";
 import NotificationManagement from "./app/admin/NotificationManagement";
 import ExamRoom from "./app/student/ExamRoom";
 import ExamTaking from "./app/student/ExamTaking";
@@ -149,16 +148,6 @@ function App() {
             element={
               <AdminRoute>
                 <ExamSettings />
-              </AdminRoute>
-            }
-          />
-
-          {/* Certificate Generator Routes */}
-          <Route
-            path="/admin/certificate-generator"
-            element={
-              <AdminRoute>
-                <CertificateGenerator />
               </AdminRoute>
             }
           />

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Bell,
   Check,
@@ -16,16 +17,24 @@ import {
   useMarkAllAsReadMutation,
   type Notification,
 } from "../../api/notifications/notificationApiSlice";
-import { useIssueCertificateMutation } from "../../api/certificates/certificateApiSlice";
 import { getStoredUser } from "../../api/auth/authService";
 import { useToast } from "../../hooks/useToast";
 
-export const NotificationIcon: React.FC = () => {
+interface NotificationIconProps {
+  variant?: "default" | "admin";
+}
+
+export const NotificationIcon: React.FC<NotificationIconProps> = ({
+  variant = "default",
+}) => {
+  const navigate = useNavigate();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedNotification, setSelectedNotification] =
     useState<Notification | null>(null);
   const iconRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const isAdminVariant = variant === "admin";
 
   const { data: unreadCount = 0 } = useGetUnreadCountQuery(undefined, {
     pollingInterval: 30000, // Poll every 30 seconds
@@ -40,8 +49,6 @@ export const NotificationIcon: React.FC = () => {
 
   const [markAsRead] = useMarkAsReadMutation();
   const [markAllAsRead] = useMarkAllAsReadMutation();
-  const [issueCertificate, { isLoading: isIssuing }] =
-    useIssueCertificateMutation();
   const { showToast } = useToast();
 
   const notifications = data?.notifications || [];
@@ -92,39 +99,32 @@ export const NotificationIcon: React.FC = () => {
     }
   };
 
-  const handleIssueCertificate = async (
-    e: React.MouseEvent,
-    notification: Notification
-  ) => {
-    e.stopPropagation();
-    const userId = notification.metadata?.userId;
-    if (!userId) {
-      showToast({
-        type: "error",
-        title: "エラー",
-        message: "ユーザーIDが見つかりません",
-        duration: 3000,
-      });
-      return;
-    }
-
+  const handleIssueCertificate = async (notification: Notification) => {
     try {
-      await issueCertificate({ userId }).unwrap();
-      showToast({
-        type: "success",
-        title: "成功",
-        message: "修了証を発行しました",
-        duration: 3000,
-      });
+      // Mark notification as read
+      if (!notification.isRead) {
+        await markAsRead(notification._id).unwrap();
+      }
+
+      // Get userId from notification metadata
+      const userId = notification.metadata?.userId;
+      if (userId) {
+        // Navigate to student management page with userId parameter
+        navigate(`/student-management?userId=${userId}`);
+      } else {
+        // If no userId, just navigate to student management page
+        navigate("/student-management");
+      }
+
+      // Close modal and refresh notifications
+      setSelectedNotification(null);
       refetch();
-    } catch (error: unknown) {
-      const errorMessage =
-        (error as { data?: { message?: string } })?.data?.message ||
-        "修了証の発行に失敗しました";
+    } catch (error) {
+      console.error("Failed to handle certificate issuance:", error);
       showToast({
         type: "error",
         title: "エラー",
-        message: errorMessage,
+        message: "処理中にエラーが発生しました。",
         duration: 3000,
       });
     }
@@ -163,7 +163,11 @@ export const NotificationIcon: React.FC = () => {
       <div className="relative" ref={iconRef}>
         <button
           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+          className={`relative p-2 rounded-lg transition-colors cursor-pointer ${
+            isAdminVariant
+              ? "text-slate-200 hover:text-white hover:bg-slate-600"
+              : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+          }`}
           aria-label="通知"
         >
           <Bell className="w-5 h-5" />
@@ -257,20 +261,6 @@ export const NotificationIcon: React.FC = () => {
                               {!notification.isRead && (
                                 <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
                               )}
-                              {isAdmin &&
-                                notification.metadata?.action ===
-                                  "issue_certificate" && (
-                                  <button
-                                    onClick={(e) =>
-                                      handleIssueCertificate(e, notification)
-                                    }
-                                    disabled={isIssuing}
-                                    className="flex items-center space-x-1 px-2 py-1 text-xs text-white bg-orange-500 hover:bg-orange-600 rounded transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                                  >
-                                    <Award className="w-3 h-3" />
-                                    <span>修了証発行</span>
-                                  </button>
-                                )}
                             </div>
                           </div>
                         </div>
@@ -315,13 +305,8 @@ export const NotificationIcon: React.FC = () => {
                 selectedNotification.metadata?.action ===
                   "issue_certificate" && (
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleIssueCertificate(e, selectedNotification);
-                      setSelectedNotification(null);
-                    }}
-                    disabled={isIssuing}
-                    className="flex items-center space-x-2 px-4 py-2 text-sm text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => handleIssueCertificate(selectedNotification)}
+                    className="flex items-center space-x-2 px-4 py-2 text-sm text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors cursor-pointer"
                   >
                     <Award className="w-4 h-4" />
                     <span>修了証発行</span>

@@ -1,5 +1,6 @@
 const Notification = require("../model/Notification");
 const User = require("../model/User");
+const mongoose = require("mongoose");
 
 /**
  * Send notification to a specific user (admin only)
@@ -19,19 +20,42 @@ const sendNotification = async (req, res) => {
     }
 
     // Check if recipient exists
-    const recipient = await User.findById(recipientId);
+    // Try to find by ObjectId first, then by email or username if not valid ObjectId
+    let recipient = null;
+    if (mongoose.Types.ObjectId.isValid(recipientId)) {
+      recipient = await User.findById(recipientId);
+    } else {
+      // If not a valid ObjectId, try to find by email or username
+      // Extract email from strings like "Casmi (casmiyasu3811@gmail.com)"
+      const emailMatch = recipientId.match(/\(([^)]+@[^)]+)\)/);
+      const email = emailMatch ? emailMatch[1] : recipientId;
+      
+      // Try to find by email first
+      recipient = await User.findOne({ email: email });
+      
+      // If not found by email, try by username
+      if (!recipient) {
+        const usernameMatch = recipientId.match(/^([^(]+)/);
+        const username = usernameMatch ? usernameMatch[1].trim() : recipientId;
+        recipient = await User.findOne({ username: username });
+      }
+    }
+    
     if (!recipient) {
       return res.status(404).json({
         success: false,
         message: "Recipient not found",
       });
     }
+    
+    // Use the actual user ID from the found user
+    const actualRecipientId = recipient._id.toString();
 
     // Create notification
     const notification = new Notification({
       title,
       message,
-      recipientId,
+      recipientId: actualRecipientId,
       senderId,
       type: type || "info",
     });

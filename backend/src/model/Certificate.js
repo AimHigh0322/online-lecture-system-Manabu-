@@ -5,7 +5,6 @@ const certificateSchema = new mongoose.Schema(
     userId: {
       type: String,
       required: true,
-      unique: true,
       index: true,
     },
     certificateNumber: {
@@ -36,8 +35,9 @@ const certificateSchema = new mongoose.Schema(
       default: Date.now,
     },
     issuedBy: {
-      type: String, // Admin user ID who issued the certificate
+      type: String,
       required: true,
+      index: true,
     },
   },
   {
@@ -46,8 +46,9 @@ const certificateSchema = new mongoose.Schema(
   }
 );
 
-// Index to ensure one certificate per user
-certificateSchema.index({ userId: 1 }, { unique: true });
+// Index for efficient queries
+certificateSchema.index({ userId: 1 });
+certificateSchema.index({ certificateNumber: 1 });
 
 const Certificate = mongoose.model("Certificate", certificateSchema);
 

@@ -13,6 +13,7 @@ export interface User {
   role: string;
   groupId?: string;
   seatNumber?: number;
+  faceDescriptor?: number[]; // Face recognition descriptor
 }
 
 export interface LoginResponse {

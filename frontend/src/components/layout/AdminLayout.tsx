@@ -8,7 +8,6 @@ import {
   Youtube,
   ClipboardList,
   Cog,
-  Award,
   FilePlus,
   BookOpen,
   Bell,
@@ -103,13 +102,6 @@ export const BossLayout: React.FC<BossLayoutProps> = ({ children }) => {
       active: location.pathname === "/admin/exam-settings",
     },
     {
-      id: "certificate",
-      label: "修了証生成",
-      icon: Award,
-      path: "/admin/certificate-generator",
-      active: location.pathname === "/admin/certificate-generator",
-    },
-    {
       id: "notifications",
       label: "通知管理",
       icon: Bell,
@@ -142,10 +134,8 @@ export const BossLayout: React.FC<BossLayoutProps> = ({ children }) => {
 
           {/* Right side - Notifications and Logout */}
           <div className="flex items-center space-x-4">
-            {/* Notification Icon */}
-            <div className="hidden sm:block">
-              <NotificationIcon />
-            </div>
+            {/* Notification Icon - Always visible for admin notifications */}
+            <NotificationIcon variant="admin" />
             {/* Logout Button */}
             <button
               onClick={handleLogout}

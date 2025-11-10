@@ -391,18 +391,16 @@ const Help: React.FC = () => {
           </div>
           <div>
             <h4 className="font-semibold text-gray-900 mb-2">
-              証明書の取得方法
+              証明書の発行リクエスト
             </h4>
             <ol className="list-decimal list-inside space-y-2 text-gray-700 text-sm">
               <li>
                 試験で70点以上を取得すると、自動的に管理者へ修了証発行リクエストが送信されます
               </li>
               <li>
-                管理者が承認すると、修了証が発行されたことを示す通知メッセージがページ上部に表示されます
+                管理者が通知アイコンから修了証発行リクエストを確認できます
               </li>
-              <li>通知から修了証をダウンロードできます</li>
-              <li>PDF形式でダウンロード可能</li>
-              <li>証明書には修了日、コース名、受講者名が記載されます</li>
+              <li>管理者が修了証を発行すると、受講生に通知が送信されます</li>
             </ol>
           </div>
         </div>

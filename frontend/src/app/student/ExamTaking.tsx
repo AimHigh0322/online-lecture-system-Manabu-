@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { Clock, ChevronLeft, ChevronRight, Camera } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useGetQuestionsQuery } from "../../api/admin/questionApiSlice";
 import { ConfirmModal } from "../../components/atom/ConfirmModal";
+import { FaceVerificationModal } from "../../components/atom/FaceVerificationModal";
 
 interface Question {
   _id: string;
@@ -38,6 +39,7 @@ interface ExamSettings {
   timeLimit: number;
   numberOfQuestions: number;
   passingScore: number;
+  faceVerificationIntervalMinutes?: number; // Face verification interval in minutes
 }
 
 // localStorage key for saving exam answers
@@ -61,6 +63,15 @@ export const ExamTaking: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showNavigationConfirm, setShowNavigationConfirm] = useState(false);
   const pendingNavigationRef = useRef<(() => void) | null>(null);
+
+  // Face verification states
+  const [showFaceVerification, setShowFaceVerification] = useState(false);
+  const [nextFaceVerificationTime, setNextFaceVerificationTime] = useState<
+    number | null
+  >(null);
+  const faceVerificationIntervalRef = useRef<ReturnType<
+    typeof setInterval
+  > | null>(null);
 
   // Update navigate ref when navigate changes
   useEffect(() => {
@@ -116,6 +127,7 @@ export const ExamTaking: React.FC = () => {
           timeLimit: 60,
           numberOfQuestions: 20,
           passingScore: 70,
+          faceVerificationIntervalMinutes: 15, // Default 15 minutes
         });
       }
     } catch (error) {
@@ -125,6 +137,7 @@ export const ExamTaking: React.FC = () => {
         timeLimit: 60,
         numberOfQuestions: 20,
         passingScore: 70,
+        faceVerificationIntervalMinutes: 15, // Default 15 minutes
       });
     }
   }, []);
@@ -175,6 +188,15 @@ export const ExamTaking: React.FC = () => {
       if (!isExamStarted) {
         setIsExamStarted(true);
         examStartTimeRef.current = Date.now();
+        // Set initial face verification time if interval is configured
+        if (
+          examSettings.faceVerificationIntervalMinutes &&
+          examSettings.faceVerificationIntervalMinutes > 0
+        ) {
+          const intervalMs =
+            examSettings.faceVerificationIntervalMinutes * 60 * 1000;
+          setNextFaceVerificationTime(Date.now() + intervalMs);
+        }
       }
     }
   }, [questionsResponse, examSettings, isExamStarted]);
@@ -470,6 +492,63 @@ export const ExamTaking: React.FC = () => {
     return () => clearInterval(timer);
   }, [timeRemaining, handleSubmitExam]);
 
+  // Face verification interval check
+  useEffect(() => {
+    if (
+      !isExamStarted ||
+      !examSettings?.faceVerificationIntervalMinutes ||
+      examSettings.faceVerificationIntervalMinutes <= 0
+    ) {
+      return;
+    }
+
+    if (showFaceVerification) {
+      // Don't check for next verification while current one is active
+      return;
+    }
+
+    const checkInterval = setInterval(() => {
+      const now = Date.now();
+      if (nextFaceVerificationTime && now >= nextFaceVerificationTime) {
+        // Time for face verification
+        setShowFaceVerification(true);
+      }
+    }, 1000); // Check every second
+
+    faceVerificationIntervalRef.current = checkInterval;
+
+    return () => {
+      if (faceVerificationIntervalRef.current) {
+        clearInterval(faceVerificationIntervalRef.current);
+      }
+    };
+  }, [
+    isExamStarted,
+    examSettings,
+    nextFaceVerificationTime,
+    showFaceVerification,
+  ]);
+
+  // Handle face verification success
+  const handleFaceVerificationSuccess = useCallback(() => {
+    setShowFaceVerification(false);
+    // Set next face verification time
+    if (
+      examSettings?.faceVerificationIntervalMinutes &&
+      examSettings.faceVerificationIntervalMinutes > 0
+    ) {
+      const intervalMs =
+        examSettings.faceVerificationIntervalMinutes * 60 * 1000;
+      setNextFaceVerificationTime(Date.now() + intervalMs);
+    }
+  }, [examSettings]);
+
+  // Handle face verification close (should not allow closing without verification)
+  const handleFaceVerificationClose = useCallback(() => {
+    // Do not allow closing without verification
+    // Modal will remain open until verification succeeds
+  }, []);
+
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -480,6 +559,10 @@ export const ExamTaking: React.FC = () => {
     questionId: string,
     answer: string | string[] | boolean
   ) => {
+    // Block answer changes during face verification
+    if (showFaceVerification) {
+      return;
+    }
     setAnswers((prev) => ({
       ...prev,
       [questionId]: answer,
@@ -487,16 +570,28 @@ export const ExamTaking: React.FC = () => {
   };
 
   const goToQuestion = (index: number) => {
+    // Block navigation during face verification
+    if (showFaceVerification) {
+      return;
+    }
     setCurrentQuestionIndex(index);
   };
 
   const goToPrevious = () => {
+    // Block navigation during face verification
+    if (showFaceVerification) {
+      return;
+    }
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(currentQuestionIndex - 1);
     }
   };
 
   const goToNext = () => {
+    // Block navigation during face verification
+    if (showFaceVerification) {
+      return;
+    }
     if (currentQuestionIndex < (examData?.totalQuestions || 0) - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     }
@@ -548,7 +643,28 @@ export const ExamTaking: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 relative">
+      {/* Block overlay when face verification is required */}
+      {showFaceVerification && (
+        <div className="fixed inset-0 bg-black/50 z-40 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 max-w-md mx-4 text-center">
+            <div className="mb-4">
+              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Camera className="w-8 h-8 text-orange-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                顔認証が必要です
+              </h3>
+              <p className="text-gray-600">
+                試験を継続するには、顔認証を完了してください。
+                <br />
+                試験時間は経過し続けます。
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Navigation Confirmation Modal */}
       <ConfirmModal
         isOpen={showNavigationConfirm}
@@ -562,7 +678,11 @@ export const ExamTaking: React.FC = () => {
       />
 
       {/* Header - 日本式デザイン */}
-      <div className="bg-white border-b border-gray-200 shadow-sm">
+      <div
+        className={`bg-white border-b border-gray-200 shadow-sm ${
+          showFaceVerification ? "opacity-50 pointer-events-none" : ""
+        }`}
+      >
         <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
           <div className="flex items-center justify-between h-20">
             <div className="flex items-center space-x-6">
@@ -582,7 +702,8 @@ export const ExamTaking: React.FC = () => {
               </div>
               <button
                 onClick={handleSubmitExam}
-                className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-sm"
+                disabled={showFaceVerification}
+                className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 提出する
               </button>
@@ -591,7 +712,11 @@ export const ExamTaking: React.FC = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-10">
+      <div
+        className={`max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-10 ${
+          showFaceVerification ? "opacity-50 pointer-events-none" : ""
+        }`}
+      >
         <div className="grid grid-cols-1 gap-8">
           {/* Question Content - ページネーション形式 */}
           <div>
@@ -747,7 +872,9 @@ export const ExamTaking: React.FC = () => {
                   <div className="flex items-center justify-between mt-auto pt-6 border-t border-gray-200">
                     <button
                       onClick={goToPrevious}
-                      disabled={currentQuestionIndex === 0}
+                      disabled={
+                        currentQuestionIndex === 0 || showFaceVerification
+                      }
                       className="flex items-center space-x-2 px-6 py-3 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-gray-700 rounded-lg transition-colors text-sm font-medium shadow-sm"
                     >
                       <ChevronLeft className="w-5 h-5" />
@@ -873,7 +1000,8 @@ export const ExamTaking: React.FC = () => {
                     <button
                       onClick={goToNext}
                       disabled={
-                        currentQuestionIndex === examData.totalQuestions - 1
+                        currentQuestionIndex === examData.totalQuestions - 1 ||
+                        showFaceVerification
                       }
                       className="flex items-center space-x-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-medium shadow-md"
                     >
@@ -887,6 +1015,15 @@ export const ExamTaking: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Face Verification Modal - Blocks exam until verification succeeds */}
+      {showFaceVerification && (
+        <FaceVerificationModal
+          isOpen={showFaceVerification}
+          onClose={handleFaceVerificationClose}
+          onVerifySuccess={handleFaceVerificationSuccess}
+        />
+      )}
     </div>
   );
 };

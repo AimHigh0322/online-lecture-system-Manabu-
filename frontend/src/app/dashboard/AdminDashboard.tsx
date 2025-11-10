@@ -140,20 +140,6 @@ export const AdminDashboard: React.FC = () => {
               </div>
             </button>
 
-            <button
-              onClick={() => navigate("/admin/certificate-generator")}
-              className="bg-white rounded-xl shadow-lg p-6 border border-slate-200 hover:shadow-xl transition-all duration-200 text-left group cursor-pointer"
-            >
-              <div className="flex items-center space-x-4">
-                <div className="bg-yellow-100 p-3 rounded-lg group-hover:bg-yellow-200 transition-colors">
-                  <ClipboardList className="w-6 h-6 text-yellow-600" />
-                </div>
-                <div>
-                  <h4 className="font-semibold text-slate-800">修了証発行</h4>
-                  <p className="text-slate-600 text-sm">修了証明書の生成と管理</p>
-                </div>
-              </div>
-            </button>
           </div>
         </div>
 

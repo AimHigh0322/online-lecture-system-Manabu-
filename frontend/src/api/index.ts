@@ -65,6 +65,12 @@ export {
   useDeleteNotificationMutation,
 } from "./notifications/notificationApiSlice";
 
+// Export certificate API
+export {
+  certificateApiSlice,
+  useGetCertificateQuery,
+} from "./certificates/certificateApiSlice";
+
 export type {
   Question,
   QuestionFormData,

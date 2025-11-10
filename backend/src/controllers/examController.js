@@ -2,6 +2,8 @@ const StandaloneQuestion = require("../model/StandaloneQuestion");
 const ExamHistory = require("../model/ExamHistory");
 const ExamSettings = require("../model/ExamSettings");
 const Exam = require("../model/Exam");
+const Notification = require("../model/Notification");
+const User = require("../model/User");
 const mongoose = require("mongoose");
 
 // Submit exam and store results
@@ -209,6 +211,38 @@ const submitExam = async (req, res) => {
     console.log("Exam results saved to database:", savedExamHistory._id);
     console.log("Exam results:", JSON.stringify(examResult, null, 2));
 
+    // If exam passed, send notification to all admins
+    if (passed) {
+      try {
+        const admins = await User.find({ role: "admin" });
+        const student = await User.findById(user.id);
+        const studentName = student?.username || student?.email || "受講生";
+
+        const notifications = admins.map((admin) => ({
+          title: "試験合格通知",
+          message: `${studentName}さんが試験に合格しました。修了証を発行してください。`,
+          recipientId: admin._id.toString(),
+          senderId: "system",
+          type: "success",
+          metadata: {
+            userId: user.id,
+            studentName: studentName,
+            action: "issue_certificate",
+          },
+        }));
+
+        if (notifications.length > 0) {
+          await Notification.insertMany(notifications);
+          console.log(
+            `Sent exam pass notification to ${admins.length} admin(s)`
+          );
+        }
+      } catch (error) {
+        console.error("Error sending exam pass notification:", error);
+        // Don't fail the exam submission if notification fails
+      }
+    }
+
     res.json({
       success: true,
       message: "Exam submitted and graded successfully",
@@ -310,11 +344,20 @@ const getExamHistories = async (req, res) => {
 const getAllExamHistories = async (req, res) => {
   try {
     const user = req.user;
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, examineeId, passed } = req.query;
 
     // Check if user is admin (you might want to add proper admin role checking)
     // For now, we'll allow any authenticated user to access all histories
     const query = {}; // No filter - get all exam histories
+
+    // Add filters if provided
+    if (examineeId) {
+      query.examineeId = examineeId;
+    }
+    if (passed !== undefined) {
+      // Handle both string "true"/"false" and boolean true/false
+      query.passed = passed === "true" || passed === true;
+    }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
 

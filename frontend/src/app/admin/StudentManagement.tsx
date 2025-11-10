@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Trash2,
   Eye,
@@ -8,6 +8,8 @@ import {
   CheckCircle,
   UserCheck,
   UserX,
+  Award,
+  Loader2,
 } from "lucide-react";
 import { BossLayout } from "../../components/layout/AdminLayout";
 import { Pagination } from "../../components/atom/Pagination";
@@ -37,31 +39,73 @@ interface StudentProfile {
     studentId: string;
     status: string;
     enrollmentAt: string;
+    completedAt?: string;
   }>;
   isBlocked: boolean;
 }
 
+interface StudentWithExamStatus extends StudentProfile {
+  hasPassedExam?: boolean;
+}
+
 export const StudentManagement: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { showToast } = useToast();
-  const [students, setStudents] = useState<StudentProfile[]>([]);
+  const [students, setStudents] = useState<StudentWithExamStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(
+  const [selectedStudent, setSelectedStudent] = useState<StudentWithExamStatus | null>(
     null
   );
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isIssuingCertificate, setIsIssuingCertificate] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{
     type: "delete" | "block";
-    student: StudentProfile;
+    student: StudentWithExamStatus;
     message: string;
   } | null>(null);
-  const [sortField, setSortField] = useState<keyof StudentProfile | null>(null);
+  const [sortField, setSortField] = useState<keyof StudentWithExamStatus | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   // Pagination state - 6 items per page
   const [page, setPage] = useState(1);
   const pageSize = 6;
+
+  const checkExamStatus = async (userId: string): Promise<boolean> => {
+    try {
+      const API_URL =
+        import.meta.env.VITE_API_URL || "http://85.131.238.90:4000";
+      const token = getAuthToken();
+
+      // Check if student has passed any exam by querying admin exam histories endpoint
+      // Only check for passed exams (passed=true)
+      const response = await fetch(
+        `${API_URL}/api/exam/admin/histories?examineeId=${userId}&passed=true&limit=1`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        // Only return true if there is at least one passed exam
+        return (
+          data.examHistories &&
+          Array.isArray(data.examHistories) &&
+          data.examHistories.length > 0 &&
+          data.examHistories.some((exam: { passed?: boolean }) => exam.passed === true)
+        );
+      }
+      return false;
+    } catch (error) {
+      console.error("Error checking exam status:", error);
+      return false;
+    }
+  };
 
   const fetchStudents = React.useCallback(async () => {
     try {
@@ -85,7 +129,15 @@ export const StudentManagement: React.FC = () => {
             (user: Record<string, unknown>) => user.role === "student"
           ) || [];
 
-        setStudents(studentProfiles);
+        // Check exam status for each student
+        const studentsWithExamStatus = await Promise.all(
+          studentProfiles.map(async (student: StudentProfile) => {
+            const hasPassedExam = await checkExamStatus(student.userId);
+            return { ...student, hasPassedExam };
+          })
+        );
+
+        setStudents(studentsWithExamStatus);
       } else {
         throw new Error("Failed to fetch students");
       }
@@ -116,6 +168,20 @@ export const StudentManagement: React.FC = () => {
 
     fetchStudents();
   }, [navigate, fetchStudents]);
+
+  // Handle URL parameter for userId
+  useEffect(() => {
+    const userId = searchParams.get("userId");
+    if (userId && students.length > 0) {
+      const student = students.find((s) => s.userId === userId);
+      if (student) {
+        setSelectedStudent(student);
+        setShowDetailModal(true);
+        // Remove userId from URL
+        navigate("/student-management", { replace: true });
+      }
+    }
+  }, [searchParams, students, navigate]);
 
   const filteredStudents = students.filter((student) => {
     const matchesSearch =
@@ -208,6 +274,88 @@ export const StudentManagement: React.FC = () => {
   const handleDetail = (student: StudentProfile) => {
     setSelectedStudent(student);
     setShowDetailModal(true);
+  };
+
+  const handleIssueCertificate = async () => {
+    if (!selectedStudent) return;
+
+    setIsIssuingCertificate(true);
+
+    try {
+      const API_URL =
+        import.meta.env.VITE_API_URL || "http://85.131.238.90:4000";
+      const token = getAuthToken();
+
+      // Get course dates
+      const firstPurchaseDate =
+        selectedStudent.courses && selectedStudent.courses.length > 0
+          ? (() => {
+              const sorted = [...selectedStudent.courses].sort(
+                (a, b) =>
+                  new Date(a.enrollmentAt).getTime() -
+                  new Date(b.enrollmentAt).getTime()
+              );
+              return sorted[0].enrollmentAt;
+            })()
+          : null;
+
+      const lastCompletionDate =
+        selectedStudent.courses && selectedStudent.courses.length > 0
+          ? (() => {
+              const completedCourses = selectedStudent.courses.filter(
+                (c) => c.status === "completed" && c.completedAt
+              );
+              if (completedCourses.length > 0) {
+                const sorted = [...completedCourses].sort(
+                  (a, b) =>
+                    new Date(b.completedAt || 0).getTime() -
+                    new Date(a.completedAt || 0).getTime()
+                );
+                return sorted[0].completedAt!;
+              }
+              return null;
+            })()
+          : null;
+
+      const response = await fetch(`${API_URL}/api/admin/certificate/issue`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userId: selectedStudent.userId,
+          firstCoursePurchaseDate: firstPurchaseDate,
+          lastCourseCompletionDate: lastCompletionDate,
+        }),
+      });
+
+      if (response.ok) {
+        showToast({
+          type: "success",
+          title: "成功",
+          message: "修了証を発行しました。受講生に通知が送信されました。",
+          duration: 3000,
+        });
+        setShowDetailModal(false);
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to issue certificate");
+      }
+    } catch (error) {
+      console.error("Error issuing certificate:", error);
+      showToast({
+        type: "error",
+        title: "エラー",
+        message:
+          error instanceof Error
+            ? error.message
+            : "修了証発行リクエストの送信に失敗しました",
+        duration: 3000,
+      });
+    } finally {
+      setIsIssuingCertificate(false);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -483,6 +631,15 @@ export const StudentManagement: React.FC = () => {
                         >
                           <Eye className="w-4 h-4" />
                         </button>
+                        {student.hasPassedExam && (
+                          <button
+                            onClick={() => handleDetail(student)}
+                            className="p-2 text-orange-600 hover:bg-orange-100 rounded-lg transition-colors"
+                            title="修了証発行"
+                          >
+                            <Award className="w-4 h-4" />
+                          </button>
+                        )}
                         <button
                           onClick={() => handleBlock(student)}
                           className={`p-2 rounded-lg transition-colors ${
@@ -595,14 +752,6 @@ export const StudentManagement: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                      電話番号
-                    </label>
-                    <p className="text-slate-800">
-                      {selectedStudent.phone || "未設定"}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
                       性別
                     </label>
                     <p className="text-slate-800">
@@ -611,52 +760,78 @@ export const StudentManagement: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                      生年月日
+                      最初のコース購入日
                     </label>
                     <p className="text-slate-800">
-                      {selectedStudent.birthday
-                        ? formatDate(selectedStudent.birthday)
-                        : "未設定"}
+                      {selectedStudent.courses && selectedStudent.courses.length > 0
+                        ? (() => {
+                            const sortedByEnrollment = [...selectedStudent.courses].sort(
+                              (a, b) =>
+                                new Date(a.enrollmentAt).getTime() -
+                                new Date(b.enrollmentAt).getTime()
+                            );
+                            return formatDate(sortedByEnrollment[0].enrollmentAt);
+                          })()
+                        : "コース未購入"}
                     </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                      登録日
+                      最後のコース完了日
                     </label>
                     <p className="text-slate-800">
-                      {formatDate(selectedStudent.joinedDate)}
+                      {selectedStudent.courses && selectedStudent.courses.length > 0
+                        ? (() => {
+                            const completedCourses = selectedStudent.courses.filter(
+                              (c) => c.status === "completed" && c.completedAt
+                            );
+                            if (completedCourses.length > 0) {
+                              const sortedByCompletion = [...completedCourses].sort(
+                                (a, b) =>
+                                  new Date(b.completedAt || 0).getTime() -
+                                  new Date(a.completedAt || 0).getTime()
+                              );
+                              return formatDate(sortedByCompletion[0].completedAt!);
+                            }
+                            return "コース未完了";
+                          })()
+                        : "コース未購入"}
                     </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                      最終ログイン
+                      現在の日付
                     </label>
                     <p className="text-slate-800">
-                      {selectedStudent.lastLogin
-                        ? formatDate(selectedStudent.lastLogin)
-                        : "未ログイン"}
+                      {formatDate(new Date().toISOString())}
                     </p>
                   </div>
                 </div>
 
                 {/* Actions */}
                 <div className="flex gap-3 pt-4 border-t border-slate-200">
-                  <button
-                    onClick={() => {
-                      setShowDetailModal(false);
-                      handleBlock(selectedStudent);
-                    }}
-                    className={`flex-1 px-4 py-2 rounded-lg transition-colors ${
-                      selectedStudent.isBlocked
-                        ? "bg-green-600 hover:bg-green-700 text-white"
-                        : "bg-red-600 hover:bg-red-700 text-white"
-                    }`}
-                  >
-                    {selectedStudent.isBlocked ? "ブロック解除" : "ブロック"}
-                  </button>
+                  {selectedStudent.hasPassedExam && (
+                    <button
+                      onClick={handleIssueCertificate}
+                      disabled={isIssuingCertificate}
+                      className="flex items-center justify-center space-x-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isIssuingCertificate ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>送信中...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Award className="w-4 h-4" />
+                          <span>修了証発行</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                   <button
                     onClick={() => setShowDetailModal(false)}
-                    className="flex-1 px-4 py-2 bg-slate-300 hover:bg-slate-400 text-slate-700 rounded-lg transition-colors"
+                    className="px-4 py-2 bg-slate-300 hover:bg-slate-400 text-slate-700 rounded-lg transition-colors"
                   >
                     閉じる
                   </button>

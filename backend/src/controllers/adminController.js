@@ -1,5 +1,8 @@
 const User = require("../model/User");
 const Profile = require("../model/Profile");
+const Course = require("../model/Course");
+const Notification = require("../model/Notification");
+const Certificate = require("../model/Certificate");
 
 /**
  * Delete a user (admin only)
@@ -103,10 +106,22 @@ const getAllUsers = async (req, res) => {
     // Get all users with their profiles
     const users = await User.find({}).select("-password");
     const profiles = await Profile.find({});
+    const courses = await Course.find({});
 
     // Combine user and profile data
     const usersWithProfiles = users.map((user) => {
       const profile = profiles.find((p) => p.userId === user._id.toString());
+      const userCourses = courses
+        .filter((c) => c.userId === user._id.toString())
+        .map((course) => ({
+          courseId: course.courseId,
+          courseName: course.courseName,
+          studentId: course.studentId,
+          status: course.status,
+          enrollmentAt: course.enrollmentAt,
+          completedAt: course.completedAt,
+        }));
+
       return {
         id: user._id.toString(),
         userId: user._id.toString(),
@@ -120,6 +135,7 @@ const getAllUsers = async (req, res) => {
         birthday: profile?.birthday || "",
         joinedDate: user.createdAt,
         lastLogin: user.lastLoginAt,
+        courses: userCourses,
         isBlocked: user.isBlocked || false,
       };
     });
@@ -137,8 +153,207 @@ const getAllUsers = async (req, res) => {
   }
 };
 
+/**
+ * Issue certificate (admin only)
+ * @route POST /api/admin/certificate/issue
+ */
+const issueCertificate = async (req, res) => {
+  try {
+    const { userId, firstCoursePurchaseDate, lastCourseCompletionDate } =
+      req.body;
+    const adminId = req.user.userId;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "userId is required",
+      });
+    }
+
+    // Check if certificate already exists
+    const existingCertificate = await Certificate.findOne({ userId });
+    if (existingCertificate) {
+      return res.status(400).json({
+        success: false,
+        message: "Certificate already issued for this user",
+      });
+    }
+
+    // Get user and profile information
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const profile = await Profile.findOne({ userId });
+    const name = profile?.displayName || user.username || user.email;
+    let gender = "未設定";
+    if (profile?.gender === "男性") {
+      gender = "男";
+    } else if (profile?.gender === "女性") {
+      gender = "女";
+    } else if (profile?.gender === "その他") {
+      gender = "その他";
+    }
+
+    // Get course dates if not provided
+    const courses = await Course.find({ userId }).sort({ enrollmentAt: 1 });
+    if (courses.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "User has no enrolled courses",
+      });
+    }
+
+    const startDate =
+      firstCoursePurchaseDate ||
+      (courses.length > 0 ? courses[0].enrollmentAt : null);
+
+    const completedCourses = courses.filter(
+      (c) => c.status === "completed" && c.completedAt
+    );
+    const endDate =
+      lastCourseCompletionDate ||
+      (completedCourses.length > 0
+        ? completedCourses.sort(
+            (a, b) => new Date(b.completedAt) - new Date(a.completedAt)
+          )[0].completedAt
+        : courses.length > 0
+        ? courses[courses.length - 1].enrollmentAt
+        : null);
+
+    // Generate certificate number
+    const lastCertificate = await Certificate.findOne()
+      .sort({ certificateNumber: -1 })
+      .limit(1);
+
+    let certificateNumber = "01";
+    if (lastCertificate && lastCertificate.certificateNumber) {
+      const lastNumber = parseInt(lastCertificate.certificateNumber, 10);
+      if (!isNaN(lastNumber)) {
+        const nextNumber = lastNumber + 1;
+        certificateNumber = nextNumber.toString().padStart(2, "0");
+      }
+    }
+
+    // Save certificate to database
+    const certificate = new Certificate({
+      userId,
+      certificateNumber,
+      name,
+      gender,
+      startDate,
+      endDate,
+      issueDate: new Date(),
+      issuedBy: adminId,
+    });
+
+    await certificate.save();
+
+    // Send notification to student
+    const notification = new Notification({
+      title: "修了証発行完了",
+      message: `修了証（第${certificateNumber}号）が発行されました。プロフィールページから修了証を確認・ダウンロードできます。`,
+      recipientId: userId,
+      senderId: adminId,
+      type: "success",
+      metadata: {
+        action: "view_certificate",
+        certificateNumber: certificateNumber,
+        certificateId: certificate._id.toString(),
+      },
+    });
+
+    await notification.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Certificate issued successfully and notification sent to student",
+      data: certificate,
+    });
+  } catch (error) {
+    console.error("Error issuing certificate:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get certificate for a user
+ * @route GET /api/certificates/:userId
+ */
+const getCertificate = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const requestingUserId = req.user.userId;
+
+    console.log("=== getCertificate Debug ===");
+    console.log("Requested userId:", userId);
+    console.log("Requesting userId:", requestingUserId);
+    console.log("User role:", req.user.role);
+
+    // Users can only get their own certificate, or admins can get any certificate
+    if (userId !== requestingUserId && req.user.role !== "admin") {
+      console.log("Access denied: userId mismatch");
+      return res.status(403).json({
+        success: false,
+        message: "Access denied",
+      });
+    }
+
+    // Try to find certificate with userId as string
+    let certificate = await Certificate.findOne({ userId: userId });
+    
+    // If not found, try with ObjectId conversion
+    if (!certificate) {
+      const mongoose = require("mongoose");
+      if (mongoose.Types.ObjectId.isValid(userId)) {
+        certificate = await Certificate.findOne({ userId: new mongoose.Types.ObjectId(userId) });
+      }
+    }
+
+    // Also try finding by userId as string in case it's stored differently
+    if (!certificate) {
+      certificate = await Certificate.findOne({ userId: String(userId) });
+    }
+
+    console.log("Certificate found:", certificate ? "Yes" : "No");
+    if (certificate) {
+      console.log("Certificate userId:", certificate.userId);
+      console.log("Certificate data:", JSON.stringify(certificate, null, 2));
+    }
+
+    if (!certificate) {
+      return res.status(404).json({
+        success: false,
+        message: "Certificate not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: certificate,
+    });
+  } catch (error) {
+    console.error("Error getting certificate:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   deleteUser,
   toggleUserBlock,
   getAllUsers,
+  issueCertificate,
+  getCertificate,
 };

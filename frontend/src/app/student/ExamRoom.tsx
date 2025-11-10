@@ -1,17 +1,19 @@
-import React from "react";
-import {
-  Play,
-  Users,
-  Award,
-  Shield,
-} from "lucide-react";
+import React, { useState } from "react";
+import { Play, Users, Award, Shield } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { FaceVerificationModal } from "../../components/atom/FaceVerificationModal";
 
 export const ExamRoom: React.FC = () => {
   const navigate = useNavigate();
+  const [showFaceVerification, setShowFaceVerification] = useState(false);
 
   const handleStartTest = () => {
-    // Directly navigate to exam without face verification
+    // Show face verification modal before starting exam
+    setShowFaceVerification(true);
+  };
+
+  const handleVerificationSuccess = () => {
+    // Navigate to exam after successful face verification
     navigate("/exam-taking");
   };
 
@@ -92,6 +94,12 @@ export const ExamRoom: React.FC = () => {
         </div>
       </div>
 
+      {/* Face Verification Modal */}
+      <FaceVerificationModal
+        isOpen={showFaceVerification}
+        onClose={() => setShowFaceVerification(false)}
+        onVerifySuccess={handleVerificationSuccess}
+      />
     </div>
   );
 };

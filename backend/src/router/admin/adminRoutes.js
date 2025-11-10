@@ -4,6 +4,7 @@ const {
   deleteUser,
   toggleUserBlock,
   getAllUsers,
+  issueCertificate,
 } = require("../../controllers/adminController");
 const authenticateToken = require("../../middleware/auth");
 
@@ -28,5 +29,8 @@ router.use(requireAdmin);
 router.get("/users", getAllUsers);
 router.delete("/users/:userId", deleteUser);
 router.patch("/users/:userId/block", toggleUserBlock);
+
+// Certificate management routes
+router.post("/certificate/issue", issueCertificate);
 
 module.exports = router;
