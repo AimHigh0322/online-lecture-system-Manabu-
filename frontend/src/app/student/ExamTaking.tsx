@@ -63,6 +63,8 @@ export const ExamTaking: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showNavigationConfirm, setShowNavigationConfirm] = useState(false);
   const pendingNavigationRef = useRef<(() => void) | null>(null);
+  const settingsRetryCountRef = useRef(0);
+  const MAX_SETTINGS_RETRIES = 5;
 
   // Face verification states
   const [showFaceVerification, setShowFaceVerification] = useState(false);
@@ -102,7 +104,7 @@ export const ExamTaking: React.FC = () => {
     }
   }, [answers]);
 
-  // Fetch exam settings
+  // Fetch exam settings from database (no template defaults)
   const fetchExamSettings = useCallback(async () => {
     try {
       const API_URL =
@@ -120,25 +122,36 @@ export const ExamTaking: React.FC = () => {
         const data = await response.json();
         if (data.settings) {
           setExamSettings(data.settings);
+          settingsRetryCountRef.current = 0; // Reset retry count on success
+        } else {
+          console.error("No settings data received from database");
+          throw new Error("Settings data not found in response");
         }
       } else {
-        // If no settings exist, use default values
-        setExamSettings({
-          timeLimit: 60,
-          numberOfQuestions: 20,
-          passingScore: 70,
-          faceVerificationIntervalMinutes: 15, // Default 15 minutes
-        });
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Error fetching exam settings from database:", errorData);
+        throw new Error(`Failed to fetch settings: ${response.status}`);
       }
     } catch (error) {
-      console.error("Error fetching exam settings:", error);
-      // Use default values on error
-      setExamSettings({
-        timeLimit: 60,
-        numberOfQuestions: 20,
-        passingScore: 70,
-        faceVerificationIntervalMinutes: 15, // Default 15 minutes
-      });
+      console.error("Error fetching exam settings from database:", error);
+      // Settings must be loaded from database - do not use template defaults
+      // The backend ExamSettings.getSettings() will create default settings if none exist
+      // Retry with exponential backoff, up to MAX_SETTINGS_RETRIES times
+      if (settingsRetryCountRef.current < MAX_SETTINGS_RETRIES) {
+        settingsRetryCountRef.current += 1;
+        const retryDelay = Math.min(
+          3000 * settingsRetryCountRef.current,
+          10000
+        );
+        setTimeout(() => {
+          fetchExamSettings();
+        }, retryDelay);
+      } else {
+        console.error(
+          "Failed to fetch exam settings after maximum retries. Please check database connection."
+        );
+        // Do not set default values - settings must come from database
+      }
     }
   }, []);
 
