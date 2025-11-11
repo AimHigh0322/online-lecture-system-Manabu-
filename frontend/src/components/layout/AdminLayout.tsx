@@ -127,7 +127,7 @@ export const BossLayout: React.FC<BossLayoutProps> = ({ children }) => {
                 }`}
               />
             </button>
-            <h1 className="text-lg md:text-xl font-bold text-white">
+            <h1 className="hidden md:block text-lg md:text-xl font-bold text-white">
               グループ責任者ダッシュボード
             </h1>
           </div>
@@ -155,7 +155,7 @@ export const BossLayout: React.FC<BossLayoutProps> = ({ children }) => {
         {/* Overlay for mobile when sidebar is open */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 bg-black bg-opacity-30 z-40 md:hidden"
+            className="fixed inset-0 bg-black/30 z-40 md:hidden"
             onClick={() => setSidebarOpen(false)}
           ></div>
         )}

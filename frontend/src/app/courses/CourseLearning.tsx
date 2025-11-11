@@ -19,6 +19,7 @@ import {
   MoreVertical,
   Clock,
   Calendar,
+  X,
 } from "lucide-react";
 import { useGetMaterialsByCourseQuery } from "../../api/materials/materialSlice";
 import { useCheckExamEligibilityMutation } from "../../api/exam/examApiSlice";
@@ -1032,20 +1033,51 @@ export const CourseLearning: React.FC = () => {
                   )}
                 </div>
 
-                {/* Save Indicator - Shows when video ends */}
+                {/* Save Indicator - Shows when video ends - Modern inline banner */}
                 {videoEnded && (
-                  <div className="absolute top-4 right-4 bg-white rounded-lg shadow-2xl p-4 border-2 border-orange-500 animate-bounce z-50">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center shadow-lg animate-pulse">
-                        <Save className="w-7 h-7 text-white animate-bounce" />
+                  <div 
+                    className="absolute bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-sm border-t border-slate-700 z-40"
+                    style={{
+                      animation: "slideUp 0.3s ease-out"
+                    }}
+                  >
+                    <div className="px-4 py-3 flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-slate-700 rounded-full flex items-center justify-center flex-shrink-0">
+                          <Check className="w-4 h-4 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-white">
+                            動画が終了しました
+                          </p>
+                          <p className="text-xs text-slate-300">
+                            進捗を保存してください
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-bold text-gray-900 animate-pulse">
-                          動画が終了しました
-                        </p>
-                        <p className="text-xs font-semibold text-orange-600">
-                          進捗を保存してください
-                        </p>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => {
+                            if (videoRef.current) {
+                              videoRef.current.pause();
+                            }
+                            setIsPlaying(false);
+                            setVideoEnded(false);
+                            setLessonToComplete(currentLesson);
+                            setShowConfirmModal(true);
+                          }}
+                          className="bg-white hover:bg-slate-100 text-slate-800 font-medium py-1.5 px-4 rounded text-sm transition-colors duration-200 flex items-center space-x-1.5 cursor-pointer"
+                        >
+                          <Save className="w-3.5 h-3.5" />
+                          <span>保存</span>
+                        </button>
+                        <button
+                          onClick={() => setVideoEnded(false)}
+                          className="text-slate-300 hover:text-white transition-colors cursor-pointer p-1"
+                          aria-label="閉じる"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
                   </div>

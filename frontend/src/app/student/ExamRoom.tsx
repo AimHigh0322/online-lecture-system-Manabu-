@@ -2,19 +2,49 @@ import React, { useState } from "react";
 import { Play, Users, Award, Shield } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { FaceVerificationModal } from "../../components/atom/FaceVerificationModal";
+import { ExamAccessModal } from "../../components/atom/ExamAccessModal";
+import { useGetExamEligibilityQuery } from "../../api/exam/examApiSlice";
 
 export const ExamRoom: React.FC = () => {
   const navigate = useNavigate();
   const [showFaceVerification, setShowFaceVerification] = useState(false);
+  const [showExamModal, setShowExamModal] = useState(false);
+
+  // Fetch exam eligibility status
+  const { data: eligibilityData, isLoading: eligibilityLoading } =
+    useGetExamEligibilityQuery({});
 
   const handleStartTest = () => {
-    // Show face verification modal before starting exam
-    setShowFaceVerification(true);
+    if (eligibilityLoading) return;
+
+    // Check exam eligibility before starting
+    if (eligibilityData?.examEligible) {
+      // If eligible, show face verification modal
+      setShowFaceVerification(true);
+    } else {
+      // If not eligible, show exam access modal
+      setShowExamModal(true);
+    }
   };
 
   const handleVerificationSuccess = () => {
     // Navigate to exam after successful face verification
     navigate("/exam-taking");
+  };
+
+  const handleGoToCourses = () => {
+    setShowExamModal(false);
+    navigate("/courses");
+  };
+
+  const handleGoToExam = () => {
+    // Only allow exam access if user is eligible
+    if (!eligibilityData?.examEligible) {
+      // If not eligible, keep showing the modal
+      return;
+    }
+    setShowExamModal(false);
+    setShowFaceVerification(true);
   };
 
   return (
@@ -69,16 +99,29 @@ export const ExamRoom: React.FC = () => {
                   <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
                     <Shield className="w-4 h-4 text-orange-600" />
                   </div>
-                  <span className="text-gray-700">AI顔認証による安全な試験環境</span>
+                  <span className="text-gray-700">
+                    AI顔認証による安全な試験環境
+                  </span>
                 </div>
               </div>
 
               <button
                 onClick={handleStartTest}
-                className="w-full max-w-md px-8 py-4 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-all duration-200 font-semibold text-lg shadow-lg flex items-center justify-center space-x-3"
+                disabled={eligibilityLoading || !eligibilityData?.examEligible}
+                className={`w-full max-w-md px-8 py-4 rounded-lg transition-all duration-200 font-semibold text-lg shadow-lg flex items-center justify-center space-x-3 ${
+                  eligibilityLoading || !eligibilityData?.examEligible
+                    ? "bg-gray-400 text-white cursor-not-allowed"
+                    : "bg-orange-500 text-white hover:bg-orange-600"
+                }`}
               >
                 <Play className="w-6 h-6" />
-                <span>試験を開始</span>
+                <span>
+                  {eligibilityLoading
+                    ? "確認中..."
+                    : eligibilityData?.examEligible
+                    ? "試験を開始"
+                    : "コースを完了してください"}
+                </span>
               </button>
             </div>
 
@@ -94,12 +137,26 @@ export const ExamRoom: React.FC = () => {
         </div>
       </div>
 
-      {/* Face Verification Modal */}
-      <FaceVerificationModal
-        isOpen={showFaceVerification}
-        onClose={() => setShowFaceVerification(false)}
-        onVerifySuccess={handleVerificationSuccess}
-      />
+      {/* Face Verification Modal - Only show if eligible */}
+      {eligibilityData?.examEligible && (
+        <FaceVerificationModal
+          isOpen={showFaceVerification}
+          onClose={() => setShowFaceVerification(false)}
+          onVerifySuccess={handleVerificationSuccess}
+        />
+      )}
+
+      {/* Exam Access Modal */}
+      {eligibilityData && (
+        <ExamAccessModal
+          isOpen={showExamModal}
+          onClose={() => setShowExamModal(false)}
+          onGoToCourses={handleGoToCourses}
+          onGoToExam={handleGoToExam}
+          courses={eligibilityData.courses || []}
+          examEligible={eligibilityData.examEligible || false}
+        />
+      )}
     </div>
   );
 };

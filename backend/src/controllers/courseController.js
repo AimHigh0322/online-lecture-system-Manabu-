@@ -1,5 +1,6 @@
 const Course = require("../model/Course");
 const User = require("../model/User");
+const Material = require("../model/Material");
 
 // Get all courses for a specific user
 const getUserCourses = async (req, res) => {
@@ -267,11 +268,47 @@ const checkExamEligibility = async (req, res) => {
     const courses = await Course.find({
       userId: userId,
       status: { $in: ["active", "completed"] },
-    }).select("courseId courseName completionRate examEligible status");
+    }).select("courseId courseName completionRate examEligible status videoProgress documentProgress");
 
-    // Check if all courses have 100% completion rate
-    const allCoursesCompleted = courses.every(
-      (course) => course.completionRate === 100
+    // Check if all courses are fully completed (all materials finished)
+    const courseCompletionStatus = await Promise.all(
+      courses.map(async (course) => {
+        // Get all materials for this course
+        const allMaterials = await Material.find({
+          courseId: course.courseId,
+        }).select("_id title type");
+
+        if (allMaterials.length === 0) {
+          // If no materials exist, course cannot be completed
+          return { courseId: course.courseId, completed: false };
+        }
+
+        // Check if all video materials are 100% completed
+        const videoMaterials = allMaterials.filter((m) => m.type === "video");
+        const allVideosCompleted = videoMaterials.every((material) => {
+          const progress = course.videoProgress.find(
+            (vp) => vp.materialName === material.title
+          );
+          return progress && progress.progress === 100;
+        });
+
+        // Check if all PDF materials are completed
+        const pdfMaterials = allMaterials.filter((m) => m.type === "pdf");
+        const allPdfsCompleted = pdfMaterials.every((material) => {
+          return course.documentProgress.some(
+            (dp) => dp.materialName === material.title
+          );
+        });
+
+        return {
+          courseId: course.courseId,
+          completed: allVideosCompleted && allPdfsCompleted,
+        };
+      })
+    );
+
+    const allCoursesCompleted = courseCompletionStatus.every(
+      (status) => status.completed
     );
 
     // Update exam eligibility for all courses
@@ -287,10 +324,24 @@ const checkExamEligibility = async (req, res) => {
       );
     }
 
+    // Format courses with completion status
+    const coursesWithStatus = courses.map((course) => {
+      const status = courseCompletionStatus.find(
+        (s) => s.courseId === course.courseId
+      );
+      return {
+        courseId: course.courseId,
+        courseName: course.courseName,
+        completionRate: course.completionRate,
+        examEligible: status?.completed || false,
+        status: course.status,
+      };
+    });
+
     res.json({
       success: true,
       examEligible: allCoursesCompleted,
-      courses: courses,
+      courses: coursesWithStatus,
       message: allCoursesCompleted
         ? "すべてのコースが完了しました。試験を受けることができます。"
         : "まだコースが完了していません。",
@@ -321,17 +372,67 @@ const getExamEligibility = async (req, res) => {
     const courses = await Course.find({
       userId: userId,
       status: { $in: ["active", "completed"] },
-    }).select("courseId courseName completionRate examEligible status");
+    }).select("courseId courseName completionRate examEligible status videoProgress documentProgress");
 
-    // Check if all courses have 100% completion rate
-    const allCoursesCompleted = courses.every(
-      (course) => course.completionRate === 100
+    // Check if all courses are fully completed (all materials finished)
+    const courseCompletionStatus = await Promise.all(
+      courses.map(async (course) => {
+        // Get all materials for this course
+        const allMaterials = await Material.find({
+          courseId: course.courseId,
+        }).select("_id title type");
+
+        if (allMaterials.length === 0) {
+          // If no materials exist, course cannot be completed
+          return { courseId: course.courseId, completed: false };
+        }
+
+        // Check if all video materials are 100% completed
+        const videoMaterials = allMaterials.filter((m) => m.type === "video");
+        const allVideosCompleted = videoMaterials.every((material) => {
+          const progress = course.videoProgress.find(
+            (vp) => vp.materialName === material.title
+          );
+          return progress && progress.progress === 100;
+        });
+
+        // Check if all PDF materials are completed
+        const pdfMaterials = allMaterials.filter((m) => m.type === "pdf");
+        const allPdfsCompleted = pdfMaterials.every((material) => {
+          return course.documentProgress.some(
+            (dp) => dp.materialName === material.title
+          );
+        });
+
+        return {
+          courseId: course.courseId,
+          completed: allVideosCompleted && allPdfsCompleted,
+        };
+      })
     );
+
+    const allCoursesCompleted = courseCompletionStatus.every(
+      (status) => status.completed
+    );
+
+    // Format courses with completion status
+    const coursesWithStatus = courses.map((course) => {
+      const status = courseCompletionStatus.find(
+        (s) => s.courseId === course.courseId
+      );
+      return {
+        courseId: course.courseId,
+        courseName: course.courseName,
+        completionRate: course.completionRate,
+        examEligible: status?.completed || false,
+        status: course.status,
+      };
+    });
 
     res.json({
       success: true,
       examEligible: allCoursesCompleted,
-      courses: courses,
+      courses: coursesWithStatus,
     });
   } catch (error) {
     console.error("❌ Error getting exam eligibility:", error);

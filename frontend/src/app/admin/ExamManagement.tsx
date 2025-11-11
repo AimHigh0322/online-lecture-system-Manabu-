@@ -263,21 +263,21 @@ export const ExamManagement: React.FC = () => {
 
   return (
     <AdminLayout>
-      <div className="p-6">
+      <div className="p-3 md:p-6">
         {/* Page Header */}
-        <div className="mb-6">
+        <div className="mb-4 md:mb-6">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">試験管理</h1>
-            <p className="text-sm text-gray-600 mt-1">
+            <h1 className="text-xl md:text-2xl font-semibold text-gray-900">試験管理</h1>
+            <p className="text-xs md:text-sm text-gray-600 mt-1">
               {examHistories.length} 件の試験履歴
             </p>
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6">
           {/* Filters and Search */}
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <div className="flex flex-col sm:flex-row gap-4">
+          <div className="bg-white rounded-lg shadow-sm p-3 md:p-6 mb-4 md:mb-6">
+            <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
               <div className="flex-1">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -286,17 +286,17 @@ export const ExamManagement: React.FC = () => {
                     placeholder="受験者名で検索..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    className="w-full pl-9 md:pl-10 pr-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   />
                 </div>
               </div>
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3 md:space-x-4">
                 <div className="flex items-center space-x-2">
                   <Filter className="w-4 h-4 text-gray-400" />
                   <select
                     value={filterStatus}
                     onChange={(e) => setFilterStatus(e.target.value)}
-                    className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    className="border border-gray-300 rounded-lg px-2 md:px-3 py-2 text-sm md:text-base focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   >
                     <option value="all">すべて</option>
                     <option value="passed">合格</option>
@@ -314,7 +314,7 @@ export const ExamManagement: React.FC = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th
-                      className={`px-6 py-3 text-center text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-gray-100 ${
+                      className={`px-2 md:px-6 py-2 md:py-3 text-center text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-gray-100 ${
                         sortField === "examineeName"
                           ? "text-orange-600 bg-orange-50"
                           : "text-gray-700"
@@ -324,7 +324,7 @@ export const ExamManagement: React.FC = () => {
                       受験者
                     </th>
                     <th
-                      className={`px-6 py-3 text-center text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-gray-100 ${
+                      className={`px-2 md:px-6 py-2 md:py-3 text-center text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-gray-100 hidden md:table-cell ${
                         sortField === "score"
                           ? "text-orange-600 bg-orange-50"
                           : "text-gray-700"
@@ -334,7 +334,7 @@ export const ExamManagement: React.FC = () => {
                       得点
                     </th>
                     <th
-                      className={`px-6 py-3 text-center text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-gray-100 ${
+                      className={`px-2 md:px-6 py-2 md:py-3 text-center text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-gray-100 hidden lg:table-cell ${
                         sortField === "percentage"
                           ? "text-orange-600 bg-orange-50"
                           : "text-gray-700"
@@ -343,11 +343,11 @@ export const ExamManagement: React.FC = () => {
                     >
                       正解率
                     </th>
-                    <th className="px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    <th className="px-2 md:px-6 py-2 md:py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
                       結果
                     </th>
                     <th
-                      className={`px-6 py-3 text-center text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-gray-100 ${
+                      className={`px-2 md:px-6 py-2 md:py-3 text-center text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-gray-100 hidden lg:table-cell ${
                         sortField === "timeSpent"
                           ? "text-orange-600 bg-orange-50"
                           : "text-gray-700"
@@ -357,7 +357,7 @@ export const ExamManagement: React.FC = () => {
                       所要時間
                     </th>
                     <th
-                      className={`px-6 py-3 text-center text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-gray-100 ${
+                      className={`px-2 md:px-6 py-2 md:py-3 text-center text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-gray-100 hidden md:table-cell ${
                         sortField === "submittedAt"
                           ? "text-orange-600 bg-orange-50"
                           : "text-gray-700"
@@ -366,7 +366,7 @@ export const ExamManagement: React.FC = () => {
                     >
                       提出日時
                     </th>
-                    <th className="px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    <th className="px-2 md:px-6 py-2 md:py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
                       操作
                     </th>
                   </tr>
@@ -374,22 +374,25 @@ export const ExamManagement: React.FC = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {paginatedHistories.map((history) => (
                     <tr key={history._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm font-medium text-gray-900">
+                      <td className="px-2 md:px-6 py-3 md:py-4 whitespace-nowrap text-center">
+                        <div className="text-xs md:text-sm font-medium text-gray-900">
                           {history.examineeName}
                         </div>
+                        <div className="text-xs text-gray-500 md:hidden mt-1">
+                          {history.score} / {history.totalQuestions} ({history.percentage}%)
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm text-gray-900">
+                      <td className="px-2 md:px-6 py-3 md:py-4 whitespace-nowrap text-center hidden md:table-cell">
+                        <div className="text-xs md:text-sm text-gray-900">
                           {history.score} / {history.totalQuestions}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm text-gray-900">
+                      <td className="px-2 md:px-6 py-3 md:py-4 whitespace-nowrap text-center hidden lg:table-cell">
+                        <div className="text-xs md:text-sm text-gray-900">
                           {history.percentage}%
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <td className="px-2 md:px-6 py-3 md:py-4 whitespace-nowrap text-center">
                         <span
                           className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                             history.passed
@@ -400,27 +403,27 @@ export const ExamManagement: React.FC = () => {
                           {history.passed ? "合格" : "不合格"}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm text-gray-900">
+                      <td className="px-2 md:px-6 py-3 md:py-4 whitespace-nowrap text-center hidden lg:table-cell">
+                        <div className="text-xs md:text-sm text-gray-900">
                           {formatTime(history.timeSpent)}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm text-gray-900">
+                      <td className="px-2 md:px-6 py-3 md:py-4 whitespace-nowrap text-center hidden md:table-cell">
+                        <div className="text-xs md:text-sm text-gray-900">
                           {formatDate(history.submittedAt)}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="flex items-center justify-center space-x-2">
+                      <td className="px-2 md:px-6 py-3 md:py-4 whitespace-nowrap text-center">
+                        <div className="flex items-center justify-center space-x-1 md:space-x-2">
                           <button
                             onClick={() => handleEdit(history)}
-                            className="px-3 py-1 text-sm text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded cursor-pointer transition-colors"
+                            className="px-2 md:px-3 py-1 text-xs md:text-sm text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded cursor-pointer transition-colors"
                           >
                             編集
                           </button>
                           <button
                             onClick={() => handleDelete(history._id)}
-                            className="px-3 py-1 text-sm text-red-600 hover:text-red-900 hover:bg-red-50 rounded cursor-pointer transition-colors"
+                            className="px-2 md:px-3 py-1 text-xs md:text-sm text-red-600 hover:text-red-900 hover:bg-red-50 rounded cursor-pointer transition-colors"
                           >
                             削除
                           </button>

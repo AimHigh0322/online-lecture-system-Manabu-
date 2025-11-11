@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useGetQuestionsQuery } from "../../api/admin/questionApiSlice";
 import { ConfirmModal } from "../../components/atom/ConfirmModal";
 import { FaceVerificationModal } from "../../components/atom/FaceVerificationModal";
+import { useGetExamEligibilityQuery } from "../../api/exam/examApiSlice";
 
 interface Question {
   _id: string;
@@ -51,6 +52,19 @@ export const ExamTaking: React.FC = () => {
   const examStartTimeRef = useRef<number | null>(null);
   const timeRemainingRef = useRef<number>(0);
   const navigateRef = useRef(navigate);
+
+  // Check exam eligibility - prevent access if courses are not 100% complete
+  const {
+    data: eligibilityData,
+    isLoading: eligibilityLoading,
+  } = useGetExamEligibilityQuery({});
+
+  // Redirect to exam room if not eligible
+  useEffect(() => {
+    if (!eligibilityLoading && eligibilityData && !eligibilityData.examEligible) {
+      navigate("/exam-room");
+    }
+  }, [eligibilityData, eligibilityLoading, navigate]);
 
   const [examData, setExamData] = useState<ExamData | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -610,6 +624,18 @@ export const ExamTaking: React.FC = () => {
   };
 
   const currentQuestion = examData?.questions[currentQuestionIndex];
+
+  // Don't render exam if not eligible or still checking eligibility
+  if (eligibilityLoading || !eligibilityData || !eligibilityData.examEligible) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">試験資格を確認中...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

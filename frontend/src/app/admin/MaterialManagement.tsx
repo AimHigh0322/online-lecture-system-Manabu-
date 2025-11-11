@@ -87,9 +87,9 @@ export const MaterialManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState<keyof Material | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  // pagination (6 rows per page)
+  // pagination (10 rows per page)
   const [page, setPage] = useState(1);
-  const pageSize = 6;
+  const pageSize = 10;
 
   // Upload form state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -716,46 +716,46 @@ export const MaterialManagement: React.FC = () => {
 
   return (
     <BossLayout>
-      <div className="p-6">
+      <div className="p-3 md:p-6">
         {/* Header */}
-        <div className="mb-6">
+        <div className="mb-4 md:mb-6">
           <button
             onClick={() => navigate("/admin")}
-            className="flex items-center text-gray-600 hover:text-gray-900 mb-4 cursor-pointer"
+            className="flex items-center text-gray-600 hover:text-gray-900 mb-3 md:mb-4 cursor-pointer text-sm md:text-base"
           >
-            <ArrowLeft className="w-5 h-5 mr-2" />
+            <ArrowLeft className="w-4 h-4 md:w-5 md:h-5 mr-2" />
             管理画面に戻る
           </button>
-          <h2 className="text-3xl font-bold text-slate-800 mb-2">教材管理</h2>
-          <p className="text-slate-600">
+          <h2 className="text-2xl md:text-3xl font-bold text-slate-800 mb-2">
+            教材管理
+          </h2>
+          <p className="text-sm md:text-base text-slate-600">
             学習教材の管理と新しい動画の追加ができます
           </p>
         </div>
 
         {/* Controls */}
-        <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-6 mb-6">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            {/* Search */}
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="教材名、説明、タグで検索..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              />
-            </div>
-
-            {/* Add Material Button */}
-            <button
-              onClick={() => setShowUploadModal(true)}
-              className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors cursor-pointer"
-            >
-              <Plus className="w-5 h-5" />
-              教材追加
-            </button>
+        <div className="flex flex-col md:flex-row gap-3 md:gap-4 items-stretch md:items-center justify-between pb-3 md:pb-4">
+          {/* Search */}
+          <div className="relative flex-1 w-full md:max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 md:w-5 md:h-5" />
+            <input
+              type="text"
+              placeholder="教材名、説明、タグで検索..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 md:pl-10 pr-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            />
           </div>
+
+          {/* Add Material Button */}
+          <button
+            onClick={() => setShowUploadModal(true)}
+            className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer text-sm md:text-base whitespace-nowrap"
+          >
+            <Plus className="w-4 h-4 md:w-5 md:h-5" />
+            教材追加
+          </button>
         </div>
 
         {/* Materials Table */}
@@ -764,10 +764,10 @@ export const MaterialManagement: React.FC = () => {
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-800">
+                  <th className="px-2 md:px-6 py-2 text-center text-xs md:text-sm font-semibold text-slate-800">
                     番号
                   </th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-800">
+                  <th className="px-2 md:px-6 py-2 text-center text-xs md:text-sm font-semibold text-slate-800">
                     <button
                       onClick={() => handleSort("title")}
                       className="inline-block hover:text-orange-600 transition-colors cursor-pointer truncate"
@@ -775,10 +775,10 @@ export const MaterialManagement: React.FC = () => {
                       教材情報
                     </button>
                   </th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-800">
+                  <th className="px-2 md:px-6 py-2 text-center text-xs md:text-sm font-semibold text-slate-800 hidden md:table-cell">
                     種別
                   </th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-800">
+                  <th className="px-2 md:px-6 py-2 text-center text-xs md:text-sm font-semibold text-slate-800 hidden lg:table-cell">
                     <button
                       onClick={() => handleSort("courseName")}
                       className="inline-block hover:text-orange-600 transition-colors cursor-pointer"
@@ -786,7 +786,7 @@ export const MaterialManagement: React.FC = () => {
                       コース
                     </button>
                   </th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-800">
+                  <th className="px-2 md:px-6 py-2 text-center text-xs md:text-sm font-semibold text-slate-800 hidden md:table-cell">
                     <button
                       onClick={() => handleSort("createdAt")}
                       className="inline-block hover:text-orange-600 transition-colors cursor-pointer"
@@ -794,7 +794,7 @@ export const MaterialManagement: React.FC = () => {
                       作成日
                     </button>
                   </th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-800">
+                  <th className="px-2 md:px-6 py-2 text-center text-xs md:text-sm font-semibold text-slate-800">
                     アクション
                   </th>
                 </tr>
@@ -802,39 +802,39 @@ export const MaterialManagement: React.FC = () => {
               <tbody className="divide-y divide-slate-200">
                 {pagedMaterials.map((material, idx) => (
                   <tr key={material.id} className="hover:bg-slate-50">
-                    <td className="px-6 py-4 text-center">
-                      <span className="text-sm font-medium text-slate-600">
+                    <td className="px-2 md:px-6 py-2 text-center">
+                      <span className="text-xs md:text-sm font-medium text-slate-600">
                         {startIndex + idx + 1}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center space-x-3">
+                    <td className="px-2 md:px-6 py-2 text-center">
+                      <div className="flex items-center justify-center space-x-2 md:space-x-3">
                         <div
-                          className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                          className={`w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
                             material.type === "pdf"
                               ? "bg-purple-100"
                               : "bg-orange-100"
                           }`}
                         >
                           {material.type === "pdf" ? (
-                            <FileText className="w-6 h-6 text-purple-600" />
+                            <FileText className="w-4 h-4 md:w-5 md:h-5 text-purple-600" />
                           ) : (
-                            <Video className="w-6 h-6 text-orange-600" />
+                            <Video className="w-4 h-4 md:w-5 md:h-5 text-orange-600" />
                           )}
                         </div>
                         <div className="flex-1 min-w-0 text-center">
-                          <div className="font-medium text-slate-800 truncate">
+                          <div className="font-medium text-slate-800 truncate text-xs md:text-sm">
                             {material.title}
                           </div>
-                          <div className="text-sm text-slate-500 truncate">
+                          <div className="text-xs text-slate-500 truncate hidden md:block">
                             {material.description}
                           </div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-2 md:px-6 py-2 text-center hidden md:table-cell">
                       <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        className={`inline-flex items-center px-2 py-0.5 md:px-2.5 md:py-0.5 rounded-full text-xs font-medium ${
                           material.type === "pdf"
                             ? "bg-purple-100 text-purple-800"
                             : "bg-emerald-100 text-emerald-700"
@@ -843,36 +843,36 @@ export const MaterialManagement: React.FC = () => {
                         {material.type === "pdf" ? "文書" : "動画"}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    <td className="px-2 md:px-6 py-2 text-center hidden lg:table-cell">
+                      <span className="inline-flex items-center px-2 py-0.5 md:px-2.5 md:py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                         {material.courseName}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-center text-sm text-slate-600">
+                    <td className="px-2 md:px-6 py-2 text-center text-xs md:text-sm text-slate-600 hidden md:table-cell">
                       {formatDate(material.createdAt)}
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-center space-x-2">
+                    <td className="px-2 md:px-6 py-2">
+                      <div className="flex items-center justify-center space-x-1 md:space-x-2">
                         <button
                           onClick={() => handleDetail(material)}
-                          className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
+                          className="p-1.5 md:p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
                           title="詳細表示"
                         >
-                          <Eye className="w-4 h-4" />
+                          <Eye className="w-3.5 h-3.5 md:w-4 md:h-4" />
                         </button>
                         <button
                           onClick={() => handleEdit(material)}
-                          className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors cursor-pointer"
+                          className="p-1.5 md:p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors cursor-pointer"
                           title="編集"
                         >
-                          <Edit className="w-4 h-4" />
+                          <Edit className="w-3.5 h-3.5 md:w-4 md:h-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(material)}
-                          className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors cursor-pointer"
+                          className="p-1.5 md:p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors cursor-pointer"
                           title="削除"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
                         </button>
                       </div>
                     </td>
@@ -894,8 +894,8 @@ export const MaterialManagement: React.FC = () => {
               </p>
             </div>
           )}
-          {/* Pagination - only show if more than 6 items */}
-          {filteredAndSortedMaterials.length > 6 && totalPages > 1 && (
+          {/* Pagination - only show if more than 10 items */}
+          {filteredAndSortedMaterials.length > 10 && totalPages > 1 && (
             <Pagination
               page={page}
               totalPages={totalPages}

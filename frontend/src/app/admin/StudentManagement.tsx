@@ -467,25 +467,25 @@ export const StudentManagement: React.FC = () => {
 
   return (
     <BossLayout>
-      <div className="p-6">
+      <div className="p-3 md:p-6">
         {/* Header */}
-        <div className="mb-6">
-          <h2 className="text-3xl font-bold text-slate-800 mb-2">学生管理</h2>
-          <p className="text-slate-600">
+        <div className="mb-4 md:mb-6">
+          <h2 className="text-2xl md:text-3xl font-bold text-slate-800 mb-2">学生管理</h2>
+          <p className="text-sm md:text-base text-slate-600">
             登録されている学生の情報を管理できます
           </p>
         </div>
 
         {/* Search */}
-        <div className="mb-6">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+        <div className="mb-4 md:mb-6">
+          <div className="relative w-full max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 md:w-5 md:h-5" />
             <input
               type="text"
               placeholder="学生名、メールアドレスで検索..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="w-full pl-9 md:pl-10 pr-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             />
           </div>
         </div>
@@ -497,7 +497,7 @@ export const StudentManagement: React.FC = () => {
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th
-                    className={`px-6 py-4 text-center text-sm font-bold cursor-pointer transition-colors ${
+                    className={`px-2 md:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-bold cursor-pointer transition-colors ${
                       sortField === "username"
                         ? "text-orange-600 bg-orange-50"
                         : "text-gray-700 hover:text-orange-600"
@@ -507,7 +507,7 @@ export const StudentManagement: React.FC = () => {
                     学生情報
                   </th>
                   <th
-                    className={`px-6 py-4 text-center text-sm font-bold cursor-pointer transition-colors ${
+                    className={`px-2 md:px-6 py-3 md:py-4 text-center text-xs md:text-sm font-bold cursor-pointer transition-colors hidden md:table-cell ${
                       sortField === "email"
                         ? "text-orange-600 bg-orange-50"
                         : "text-gray-700 hover:text-orange-600"
@@ -517,7 +517,7 @@ export const StudentManagement: React.FC = () => {
                     連絡先
                   </th>
                   <th
-                    className={`px-6 py-4 text-center text-sm font-bold cursor-pointer transition-colors ${
+                    className={`px-2 md:px-6 py-3 md:py-4 text-center text-xs md:text-sm font-bold cursor-pointer transition-colors hidden lg:table-cell ${
                       sortField === "joinedDate"
                         ? "text-orange-600 bg-orange-50"
                         : "text-gray-700 hover:text-orange-600"
@@ -527,7 +527,7 @@ export const StudentManagement: React.FC = () => {
                     登録日
                   </th>
                   <th
-                    className={`px-6 py-4 text-center text-sm font-bold cursor-pointer transition-colors ${
+                    className={`px-2 md:px-6 py-3 md:py-4 text-center text-xs md:text-sm font-bold cursor-pointer transition-colors hidden lg:table-cell ${
                       sortField === "lastLogin"
                         ? "text-orange-600 bg-orange-50"
                         : "text-gray-700 hover:text-orange-600"
@@ -537,7 +537,7 @@ export const StudentManagement: React.FC = () => {
                     最終ログイン
                   </th>
                   <th
-                    className={`px-6 py-4 text-center text-sm font-bold cursor-pointer transition-colors ${
+                    className={`px-2 md:px-6 py-3 md:py-4 text-center text-xs md:text-sm font-bold cursor-pointer transition-colors hidden md:table-cell ${
                       sortField === "isBlocked"
                         ? "text-orange-600 bg-orange-50"
                         : "text-gray-700 hover:text-orange-600"
@@ -546,7 +546,7 @@ export const StudentManagement: React.FC = () => {
                   >
                     ステータス
                   </th>
-                  <th className="px-6 py-4 text-center text-sm font-bold text-gray-700">
+                  <th className="px-2 md:px-6 py-3 md:py-4 text-center text-xs md:text-sm font-bold text-gray-700">
                     アクション
                   </th>
                 </tr>
@@ -554,9 +554,9 @@ export const StudentManagement: React.FC = () => {
               <tbody className="divide-y divide-slate-200">
                 {pagedStudents.map((student) => (
                   <tr key={student.id} className="hover:bg-slate-50">
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center space-x-3">
-                        <div className="w-10 h-10 rounded-full overflow-hidden bg-orange-100 flex items-center justify-center">
+                    <td className="px-2 md:px-6 py-3 md:py-4">
+                      <div className="flex items-center justify-start space-x-2 md:space-x-3">
+                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden bg-orange-100 flex items-center justify-center flex-shrink-0">
                           <img
                             src={
                               student.avatar
@@ -574,34 +574,37 @@ export const StudentManagement: React.FC = () => {
                             }}
                           />
                         </div>
-                        <div className="text-center">
-                          <div className="font-medium text-slate-800">
+                        <div className="text-left min-w-0">
+                          <div className="font-medium text-slate-800 text-xs md:text-sm truncate">
                             {student.username}
+                          </div>
+                          <div className="text-xs text-slate-500 md:hidden">
+                            {student.email}
                           </div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="text-sm text-slate-800">
+                    <td className="px-2 md:px-6 py-3 md:py-4 text-center hidden md:table-cell">
+                      <div className="text-xs md:text-sm text-slate-800">
                         {student.email}
                       </div>
                       {student.phone && (
-                        <div className="text-sm text-slate-500">
+                        <div className="text-xs md:text-sm text-slate-500">
                           {student.phone}
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-center text-sm text-slate-600">
+                    <td className="px-2 md:px-6 py-3 md:py-4 text-center text-xs md:text-sm text-slate-600 hidden lg:table-cell">
                       {formatDate(student.joinedDate)}
                     </td>
-                    <td className="px-6 py-4 text-center text-sm text-slate-600">
+                    <td className="px-2 md:px-6 py-3 md:py-4 text-center text-xs md:text-sm text-slate-600 hidden lg:table-cell">
                       {student.lastLogin
                         ? formatDate(student.lastLogin)
                         : "未ログイン"}
                     </td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-2 md:px-6 py-3 md:py-4 text-center hidden md:table-cell">
                       <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        className={`inline-flex items-center px-2 py-0.5 md:px-2.5 md:py-0.5 rounded-full text-xs font-medium ${
                           student.isBlocked
                             ? "bg-red-100 text-red-800"
                             : "bg-green-100 text-green-800"
@@ -620,27 +623,27 @@ export const StudentManagement: React.FC = () => {
                         )}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center space-x-2">
+                    <td className="px-2 md:px-6 py-3 md:py-4 text-center">
+                      <div className="flex items-center justify-center space-x-1 md:space-x-2">
                         <button
                           onClick={() => handleDetail(student)}
-                          className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                          className="p-1.5 md:p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
                           title="詳細表示"
                         >
-                          <Eye className="w-4 h-4" />
+                          <Eye className="w-3.5 h-3.5 md:w-4 md:h-4" />
                         </button>
                         {student.hasPassedExam && (
                           <button
                             onClick={() => handleDetail(student)}
-                            className="p-2 text-orange-600 hover:bg-orange-100 rounded-lg transition-colors"
+                            className="p-1.5 md:p-2 text-orange-600 hover:bg-orange-100 rounded-lg transition-colors"
                             title="修了証発行"
                           >
-                            <Award className="w-4 h-4" />
+                            <Award className="w-3.5 h-3.5 md:w-4 md:h-4" />
                           </button>
                         )}
                         <button
                           onClick={() => handleBlock(student)}
-                          className={`p-2 rounded-lg transition-colors ${
+                          className={`p-1.5 md:p-2 rounded-lg transition-colors ${
                             student.isBlocked
                               ? "text-green-600 hover:bg-green-100"
                               : "text-red-600 hover:bg-red-100"
@@ -650,17 +653,17 @@ export const StudentManagement: React.FC = () => {
                           }
                         >
                           {student.isBlocked ? (
-                            <UserCheck className="w-4 h-4" />
+                            <UserCheck className="w-3.5 h-3.5 md:w-4 md:h-4" />
                           ) : (
-                            <UserX className="w-4 h-4" />
+                            <UserX className="w-3.5 h-3.5 md:w-4 md:h-4" />
                           )}
                         </button>
                         <button
                           onClick={() => handleDelete(student)}
-                          className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                          className="p-1.5 md:p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
                           title="削除"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
                         </button>
                       </div>
                     </td>

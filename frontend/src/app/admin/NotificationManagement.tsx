@@ -183,43 +183,43 @@ export const NotificationManagement: React.FC = () => {
 
   return (
     <BossLayout>
-      <div className="p-6">
-        <div className="mb-6">
-          <h2 className="text-3xl font-bold text-slate-800 mb-2">
+      <div className="p-3 md:p-6">
+        <div className="mb-4 md:mb-6">
+          <h2 className="text-2xl md:text-3xl font-bold text-slate-800 mb-2">
             通知管理
           </h2>
-          <p className="text-slate-600">
+          <p className="text-sm md:text-base text-slate-600">
             受講生に通知を送信できます
           </p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+        <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-3 md:p-6">
           {/* Send Mode Selection */}
-          <div className="mb-6">
+          <div className="mb-4 md:mb-6">
             <label className="block text-sm font-medium text-slate-700 mb-3">
               送信先
             </label>
-            <div className="flex space-x-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <button
                 onClick={() => setSendMode("all")}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors cursor-pointer ${
+                className={`flex items-center justify-center space-x-2 px-4 py-2 rounded-lg transition-colors cursor-pointer text-sm md:text-base ${
                   sendMode === "all"
                     ? "bg-orange-500 text-white"
                     : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                 }`}
               >
-                <Users className="w-5 h-5" />
+                <Users className="w-4 h-4 md:w-5 md:h-5" />
                 <span>すべての受講生</span>
               </button>
               <button
                 onClick={() => setSendMode("single")}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors cursor-pointer ${
+                className={`flex items-center justify-center space-x-2 px-4 py-2 rounded-lg transition-colors cursor-pointer text-sm md:text-base ${
                   sendMode === "single"
                     ? "bg-orange-500 text-white"
                     : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                 }`}
               >
-                <User className="w-5 h-5" />
+                <User className="w-4 h-4 md:w-5 md:h-5" />
                 <span>特定の受講生</span>
               </button>
             </div>
@@ -259,20 +259,20 @@ export const NotificationManagement: React.FC = () => {
               <label className="block text-sm font-medium text-slate-700 mb-2">
                 通知タイプ
               </label>
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {(["info", "success", "warning", "error"] as const).map((type) => (
                   <button
                     key={type}
                     type="button"
                     onClick={() => setFormData({ ...formData, type })}
-                    className={`flex items-center justify-center space-x-2 px-4 py-3 rounded-lg border-2 transition-colors cursor-pointer ${
+                    className={`flex items-center justify-center space-x-2 px-3 md:px-4 py-2 md:py-3 rounded-lg border-2 transition-colors cursor-pointer text-xs md:text-sm ${
                       formData.type === type
                         ? "border-orange-500 bg-orange-50"
                         : "border-slate-200 hover:border-slate-300"
                     }`}
                   >
                     {getTypeIcon(type)}
-                    <span className="text-sm font-medium capitalize">{type}</span>
+                    <span className="font-medium capitalize">{type}</span>
                   </button>
                 ))}
               </div>
@@ -313,7 +313,7 @@ export const NotificationManagement: React.FC = () => {
             </div>
 
             {/* Submit Button */}
-            <div className="flex justify-end space-x-3">
+            <div className="flex flex-col sm:flex-row justify-end gap-3">
               <button
                 type="button"
                 onClick={() => {
@@ -324,15 +324,15 @@ export const NotificationManagement: React.FC = () => {
                   });
                   setSelectedStudentId("");
                 }}
-                className="px-6 py-2 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                className="w-full sm:w-auto px-6 py-2 text-sm md:text-base text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
               >
                 リセット
               </button>
               <button
                 type="submit"
-                className="flex items-center space-x-2 px-6 py-2 text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors cursor-pointer"
+                className="w-full sm:w-auto flex items-center justify-center space-x-2 px-6 py-2 text-sm md:text-base text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors cursor-pointer"
               >
-                <Send className="w-5 h-5" />
+                <Send className="w-4 h-4 md:w-5 md:h-5" />
                 <span>送信</span>
               </button>
             </div>

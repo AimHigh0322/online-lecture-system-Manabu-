@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
-  BookOpen,
   LogOut,
   ChevronDown,
   UserCircle,
@@ -12,6 +11,7 @@ import {
   HelpCircle,
   Menu,
   X,
+  GraduationCap,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { logout, getAuthToken } from "../../api/auth/authService";
@@ -126,14 +126,14 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children }) => {
       id: "privacy",
       label: "プライバシー",
       icon: Lock,
-      action: () => navigate("/privacy"),
+      // action: () => navigate("/privacy"),
       danger: false,
     },
     {
       id: "settings",
       label: "設定",
       icon: Settings,
-      action: () => navigate("/settings"),
+      // action: () => navigate("/settings"),
       danger: false,
     },
     {
@@ -169,16 +169,15 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children }) => {
                 )}
               </button>
               {/* Logo - Hidden on mobile */}
-              <div className="hidden lg:flex items-center space-x-2">
-                <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
-                  <BookOpen className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-lg font-bold text-gray-800 whitespace-nowrap">
-                    学ぼう国際研修センター
-                  </h1>
-                </div>
-              </div>
+              <button
+                onClick={() => navigate("/")}
+                className="hidden lg:flex items-center space-x-2 hover:opacity-80 transition-opacity cursor-pointer"
+              >
+                <GraduationCap className="w-6 h-6 text-orange-600" />
+                <span className="text-base font-semibold text-slate-800">
+                  学ぼう国際研修センター
+                </span>
+              </button>
             </div>
 
             {/* Desktop Navigation */}
@@ -258,17 +257,21 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children }) => {
                         <button
                           key={item.id}
                           onClick={() => {
-                            item.action();
+                            if (item.action) {
+                              item.action();
+                            }
                             setShowUserDropdown(false);
                           }}
                           className={`w-full flex items-center space-x-3 px-4 py-2 text-sm transition-colors cursor-pointer ${
                             item.danger
                               ? "text-red-600 hover:bg-red-50 hover:text-red-700"
                               : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                          } ${
+                            !item.action ? "opacity-50 cursor-not-allowed" : ""
                           }`}
                         >
                           <item.icon className="w-4 h-4" />
-                          <span>{item.label}</span>
+                          {item.label && <span>{item.label}</span>}
                         </button>
                       ))}
                     </div>
@@ -432,37 +435,15 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children }) => {
         {/* Footer Section */}
         <div className="border-t border-gray-700">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className="flex flex-col md:flex-row justify-center items-center">
               {/* Left Side - Copyright */}
-              <div className="mb-4 md:mb-0">
+              <div className="mb-4 md:mb-0 text-center">
                 <p className="text-gray-300 mb-2">
                   © 2025 学ぼう国際研修センター
                 </p>
                 <p className="text-gray-400 text-sm">
                   Registered company 12345678 | VAT #JP 123 4567 89
                 </p>
-              </div>
-
-              {/* Right Side - Navigation Links */}
-              <div className="flex space-x-8">
-                <a
-                  href="#"
-                  className="text-gray-300 hover:text-white transition-colors"
-                >
-                  クレジット
-                </a>
-                <a
-                  href="#"
-                  className="text-gray-300 hover:text-white transition-colors"
-                >
-                  プライバシーポリシー
-                </a>
-                <a
-                  href="#"
-                  className="text-gray-300 hover:text-white transition-colors"
-                >
-                  ウェブデザイン
-                </a>
               </div>
             </div>
           </div>
