@@ -1,4 +1,3 @@
-// src/app/profile/ProfileManagement.tsx
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -88,23 +87,10 @@ export const ProfileManagement: React.FC = () => {
   const certificateRef = useRef<HTMLDivElement>(null);
 
   // Get certificate data from database
-  const {
-    data: certificate,
-    isLoading: isLoadingCertificate,
-    error: certificateError,
-  } = useGetCertificateQuery(userId, {
-    skip: !userId,
-  });
-
-  // Debug: Check certificate data
-  useEffect(() => {
-    console.log("=== Certificate Debug ===");
-    console.log("userId:", userId);
-    console.log("isLoadingCertificate:", isLoadingCertificate);
-    console.log("certificate:", certificate);
-    console.log("certificateError:", certificateError);
-    console.log("========================");
-  }, [userId, isLoadingCertificate, certificate, certificateError]);
+  const { data: certificate, isLoading: isLoadingCertificate } =
+    useGetCertificateQuery(userId, {
+      skip: !userId,
+    });
 
   const getPasswordStrength = (pw: string) => {
     let score = 0;
@@ -366,12 +352,12 @@ export const ProfileManagement: React.FC = () => {
   };
 
   const handleDownloadCertificate = async () => {
-    if (!certificate) {
+    if (!certificate || !certificateRef.current) {
       showToast({
         type: "error",
         title: "エラー",
-        message: "修了証が見つかりません",
-        duration: 3000,
+        message: "修了証データが見つかりません。",
+        duration: 4000,
       });
       return;
     }
@@ -379,94 +365,99 @@ export const ProfileManagement: React.FC = () => {
     setIsGeneratingCertificate(true);
 
     try {
-      if (!certificateRef.current) {
-        throw new Error("Certificate element not found");
-      }
-
-      const originalDisplay = certificateRef.current.style.display;
-      certificateRef.current.style.display = "block";
+      // B5 dimensions in mm: 182mm x 257mm
+      const B5_WIDTH_MM = 182;
+      const B5_HEIGHT_MM = 257;
 
       // Wait for background image to load
-      await new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => resolve(void 0);
-        img.onerror = () => resolve(void 0);
-        img.src = "/img/certificate.png";
-        setTimeout(() => resolve(void 0), 3000);
-      });
+      const certificateElement = certificateRef.current;
+      if (certificateElement) {
+        // Ensure the element is visible for html2canvas (temporarily)
+        const originalStyle = certificateElement.style.cssText;
+        certificateElement.style.position = "absolute";
+        certificateElement.style.left = "0";
+        certificateElement.style.top = "0";
+        certificateElement.style.visibility = "visible";
+        certificateElement.style.zIndex = "9999";
 
-      await new Promise((resolve) => setTimeout(resolve, 200));
+        // Wait for background image to load
+        await new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => resolve(undefined);
+          img.onerror = () => resolve(undefined);
+          img.src = "/img/certificate.png";
+          // Timeout after 2 seconds
+          setTimeout(() => resolve(undefined), 2000);
+        });
 
-      const certWidth = certificateRef.current.offsetWidth;
-      const certHeight =
-        certificateRef.current.scrollHeight ||
-        certificateRef.current.offsetHeight;
+        // Wait a bit more to ensure rendering is complete
+        await new Promise((resolve) => setTimeout(resolve, 200));
 
-      const scale = 3;
-      const canvas = await html2canvas(certificateRef.current, {
-        scale: scale,
-        useCORS: true,
-        allowTaint: false,
-        logging: false,
-        backgroundColor: null,
-        width: certWidth,
-        height: certHeight,
-        windowWidth: certWidth,
-        windowHeight: certHeight,
-        onclone: (clonedDoc) => {
-          const clonedElement = clonedDoc.querySelector(
-            ".certificate-container"
-          ) as HTMLElement;
-          if (clonedElement) {
-            clonedElement.style.backgroundImage = "url('/img/certificate.png')";
-            clonedElement.style.backgroundSize = "100% 100%";
-            clonedElement.style.backgroundPosition = "top left";
-            clonedElement.style.backgroundRepeat = "no-repeat";
-          }
-        },
-      });
+        // Capture the certificate element using html2canvas
+        const canvas = await html2canvas(certificateElement, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: "#ffffff",
+          width: certificateElement.offsetWidth || B5_WIDTH_MM * 3.7795,
+          height: certificateElement.offsetHeight || B5_HEIGHT_MM * 3.7795,
+        });
 
-      certificateRef.current.style.display = originalDisplay;
+        // Restore original style
+        certificateElement.style.cssText = originalStyle;
 
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: [182, 257], // JIS B5 size
-      });
+        // Create PDF with B5 format
+        const pdf = new jsPDF({
+          orientation: "portrait",
+          unit: "mm",
+          format: [B5_WIDTH_MM, B5_HEIGHT_MM],
+        });
 
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
+        // Convert canvas to image
+        const imgData = canvas.toDataURL("image/png", 1.0);
 
-      const imgData = canvas.toDataURL("image/png", 1.0);
+        // Calculate dimensions to fit B5 page
+        const imgWidth = B5_WIDTH_MM;
+        const imgHeight = (canvas.height * B5_WIDTH_MM) / canvas.width;
 
-      pdf.addImage(
-        imgData,
-        "PNG",
-        0,
-        0,
-        pdfWidth,
-        pdfHeight,
-        undefined,
-        "FAST"
-      );
+        // Add image to PDF
+        pdf.addImage(
+          imgData,
+          "PNG",
+          0,
+          0,
+          imgWidth,
+          imgHeight,
+          undefined,
+          "FAST"
+        );
 
-      const filename = `修了証_${certificate.name}_${certificate.certificateNumber}.pdf`;
-      pdf.save(filename);
+        // Generate filename with timestamp
+        const timestamp = new Date()
+          .toISOString()
+          .slice(0, 19)
+          .replace(/:/g, "-");
+        const filename = `certificate-${timestamp}.pdf`;
 
-      setIsGeneratingCertificate(false);
+        // Save the PDF
+        pdf.save(filename);
+      }
+
       showToast({
         type: "success",
-        title: "成功",
-        message: "修了証をダウンロードしました",
-        duration: 3000,
+        title: "ダウンロード完了",
+        message: "修了証が正常にダウンロードされました。",
+        duration: 4000,
       });
+
+      setIsGeneratingCertificate(false);
     } catch (error) {
-      console.error("Error generating certificate:", error);
+      console.error("Error generating PDF:", error);
       showToast({
         type: "error",
         title: "エラー",
-        message: "修了証の生成中にエラーが発生しました",
-        duration: 3000,
+        message: "PDFの生成中にエラーが発生しました。",
+        duration: 4000,
       });
       setIsGeneratingCertificate(false);
     }
@@ -548,93 +539,89 @@ export const ProfileManagement: React.FC = () => {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       {/* Page Header */}
-      <div className="mb-6 flex justify-between items-center">
-        <div>
-          <h2 className="text-3xl font-bold text-slate-800">
-            プロフィール管理
-          </h2>
-          <p className="text-slate-600 mt-1">アカウント情報を管理できます</p>
-        </div>
-        {/* Show download button only if certificate exists in database */}
-        {isLoadingCertificate ? (
-          <div className="flex items-center space-x-2 px-4 py-2 text-slate-600">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span>確認中...</span>
-          </div>
-        ) : certificate ? (
-          <button
-            onClick={handleDownloadCertificate}
-            disabled={isGeneratingCertificate}
-            className="flex items-center space-x-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isGeneratingCertificate ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>生成中...</span>
-              </>
-            ) : (
-              <>
-                <FileDown className="w-4 h-4" />
-                <span>修了証ダウンロード</span>
-              </>
-            )}
-          </button>
-        ) : (
-          <div className="text-xs text-slate-400">
-            {/* Debug: Remove this in production */}
-            {import.meta.env.DEV && (
-              <div>
-                No certificate (userId: {userId || "none"})
-                {certificateError &&
-                  ` - Error: ${JSON.stringify(certificateError)}`}
-              </div>
-            )}
-          </div>
-        )}
+      <div className="mb-6">
+        <h2 className="text-2xl sm:text-3xl font-bold text-slate-800">
+          プロフィール管理
+        </h2>
+        <p className="text-slate-600 mt-1 text-sm sm:text-base">
+          アカウント情報を管理できます
+        </p>
       </div>
 
       {/* Single Column Layout */}
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-xl shadow-lg p-6 border border-slate-200">
-          {/* Header with Edit Button */}
-          <div className="flex justify-between items-center mb-6">
+          {/* Header with Edit Button and Certificate Download */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <h3 className="text-xl font-semibold text-slate-800"></h3>
-            {!editing ? (
-              <button
-                onClick={handleEdit}
-                className="flex items-center space-x-2 px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white font-medium rounded-lg transition-colors cursor-pointer"
-              >
-                <Edit2 className="w-4 h-4" />
-                <span>編集</span>
-              </button>
-            ) : (
-              <div className="flex space-x-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+              {/* Certificate Download Button */}
+              {!editing && (
+                <>
+                  {isLoadingCertificate ? (
+                    <div className="flex items-center justify-center space-x-2 px-4 py-2 text-slate-600 bg-slate-50 rounded-lg">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="text-sm">確認中...</span>
+                    </div>
+                  ) : certificate ? (
+                    <button
+                      onClick={handleDownloadCertificate}
+                      disabled={isGeneratingCertificate}
+                      className="flex items-center justify-center space-x-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+                    >
+                      {isGeneratingCertificate ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>生成中...</span>
+                        </>
+                      ) : (
+                        <>
+                          <FileDown className="w-4 h-4" />
+                          <span>修了証ダウンロード</span>
+                        </>
+                      )}
+                    </button>
+                  ) : null}
+                </>
+              )}
+              {/* Edit Button */}
+              {!editing ? (
                 <button
-                  onClick={handleCancel}
-                  className="flex items-center space-x-2 px-4 py-2 bg-slate-300 hover:bg-slate-400 text-slate-700 font-medium rounded-lg transition-colors cursor-pointer disabled:bg-slate-200 disabled:cursor-not-allowed"
-                  disabled={isUpdating || isUploadingAvatar}
+                  onClick={handleEdit}
+                  className="flex items-center justify-center space-x-2 px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white font-medium rounded-lg transition-colors cursor-pointer text-sm sm:text-base"
                 >
-                  <X className="w-4 h-4" />
-                  <span>キャンセル</span>
+                  <Edit2 className="w-4 h-4" />
+                  <span>編集</span>
                 </button>
-                <button
-                  onClick={() => setShowConfirmModal(true)}
-                  className="flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors cursor-pointer disabled:bg-slate-400 disabled:cursor-not-allowed"
-                  disabled={isUpdating || isUploadingAvatar}
-                >
-                  <Save className="w-4 h-4" />
-                  <span>
-                    {isUploadingAvatar
-                      ? "アバターアップロード中..."
-                      : isUpdating
-                      ? "プロフィール保存中..."
-                      : "保存"}
-                  </span>
-                </button>
-              </div>
-            )}
+              ) : (
+                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+                  <button
+                    onClick={handleCancel}
+                    className="flex items-center justify-center space-x-2 px-4 py-2 bg-slate-300 hover:bg-slate-400 text-slate-700 font-medium rounded-lg transition-colors cursor-pointer disabled:bg-slate-200 disabled:cursor-not-allowed text-sm sm:text-base"
+                    disabled={isUpdating || isUploadingAvatar}
+                  >
+                    <X className="w-4 h-4" />
+                    <span>キャンセル</span>
+                  </button>
+                  <button
+                    onClick={() => setShowConfirmModal(true)}
+                    className="flex items-center justify-center space-x-2 px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors cursor-pointer disabled:bg-slate-400 disabled:cursor-not-allowed text-sm sm:text-base"
+                    disabled={isUpdating || isUploadingAvatar}
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>
+                      {isUploadingAvatar
+                        ? "アップロード中..."
+                        : isUpdating
+                        ? "保存中..."
+                        : "保存"}
+                    </span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Avatar Section at Top */}
@@ -1209,7 +1196,7 @@ export const ProfileManagement: React.FC = () => {
               backgroundPosition: "top left",
               backgroundRepeat: "no-repeat",
               fontFamily:
-                "'MS PGothic', 'Hiragino Kaku Gothic ProN', sans-serif",
+                "'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', 'MS PGothic', sans-serif",
             }}
           >
             {/* Content Area */}
@@ -1220,15 +1207,35 @@ export const ProfileManagement: React.FC = () => {
                 zIndex: 1,
               }}
             >
+              {/* Certificate Number - Top Right */}
+              {certificate.certificateNumber && (
+                <div
+                  style={{
+                    textAlign: "right",
+                    fontSize: "16px",
+                    fontWeight: "normal",
+                    marginBottom: "10px",
+                    color: "#000000",
+                    fontFamily:
+                      "'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', 'MS PGothic', sans-serif",
+                  }}
+                >
+                  第{certificate.certificateNumber}号
+                </div>
+              )}
+
               {/* Title - Centered at top */}
               <div
                 style={{
                   textAlign: "center",
+                  paddingRight: "10px",
                   fontSize: "48px",
                   fontWeight: "bold",
                   marginBottom: "40px",
                   letterSpacing: "4px",
                   color: "#000000",
+                  fontFamily:
+                    "'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', 'MS PGothic', sans-serif",
                 }}
               >
                 修了証書
@@ -1240,9 +1247,10 @@ export const ProfileManagement: React.FC = () => {
                   width: "100%",
                   borderCollapse: "collapse",
                   border: "1px solid #000",
-                  marginBottom: "20px",
                   tableLayout: "fixed",
                   fontSize: "18px",
+                  fontFamily:
+                    "'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', 'MS PGothic', sans-serif",
                 }}
               >
                 {/* Header Row 1 */}
@@ -1321,7 +1329,7 @@ export const ProfileManagement: React.FC = () => {
                         fontWeight: "500",
                       }}
                     >
-                      {certificate.name}
+                      {profile?.username || certificate.name}
                     </td>
                     <td
                       style={{
@@ -1401,16 +1409,52 @@ export const ProfileManagement: React.FC = () => {
               <div
                 style={{
                   fontSize: "20px",
-                  lineHeight: "2.5",
+                  lineHeight: "1.5",
                   textAlign: "left",
-                  marginTop: "30px",
-                  marginBottom: "50px",
+                  marginBottom: "65px",
                   fontWeight: "normal",
                   color: "#000000",
+                  fontFamily:
+                    "'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', 'MS PGothic', sans-serif",
                 }}
               >
                 <div>上記の者は本校で規定の講習を</div>
                 <div>修了したことを証する</div>
+              </div>
+
+              {/* Issuance Details - Bottom Right */}
+              <div
+                style={{
+                  textAlign: "right",
+                  fontSize: "18px",
+                  lineHeight: "2",
+                  color: "#000000",
+                  position: "relative",
+                  paddingRight: "5px",
+                  fontFamily:
+                    "'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', 'MS PGothic', sans-serif",
+                }}
+              >
+                {/* Issuance Date */}
+                <div style={{ paddingTop: "5px" }}>
+                  {formatDateForDisplay(
+                    certificate.issueDate || certificate.endDate
+                  )}
+                </div>
+
+                {/* Institution Name */}
+                <div style={{ paddingTop: "5px" }}>学ぼう国際研修センター</div>
+
+                {/* Director Name with Seal Space */}
+                <div
+                  style={{
+                    display: "inline-block",
+                    position: "relative",
+                    paddingRight: "50px", // Space for seal
+                  }}
+                >
+                  学院長&nbsp;&nbsp;&nbsp;&nbsp;中野&nbsp;&nbsp;&nbsp;&nbsp;学
+                </div>
               </div>
             </div>
           </div>

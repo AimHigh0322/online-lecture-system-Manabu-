@@ -62,9 +62,7 @@ export const notificationApiSlice = apiSlice.injectEndpoints({
       }),
       transformResponse: (response: NotificationResponse) => {
         if (!response.success || !response.data) {
-          throw new Error(
-            response.message || "通知の取得に失敗しました"
-          );
+          throw new Error(response.message || "通知の取得に失敗しました");
         }
         return response.data;
       },
@@ -102,9 +100,7 @@ export const notificationApiSlice = apiSlice.injectEndpoints({
         message?: string;
       }) => {
         if (!response.success) {
-          throw new Error(
-            response.message || "通知の送信に失敗しました"
-          );
+          throw new Error(response.message || "通知の送信に失敗しました");
         }
         return response;
       },
@@ -127,9 +123,7 @@ export const notificationApiSlice = apiSlice.injectEndpoints({
         data: { count: number };
       }) => {
         if (!response.success) {
-          throw new Error(
-            response.message || "通知の送信に失敗しました"
-          );
+          throw new Error(response.message || "通知の送信に失敗しました");
         }
         return response;
       },
@@ -151,9 +145,7 @@ export const notificationApiSlice = apiSlice.injectEndpoints({
         message?: string;
       }) => {
         if (!response.success) {
-          throw new Error(
-            response.message || "通知の更新に失敗しました"
-          );
+          throw new Error(response.message || "通知の更新に失敗しました");
         }
         return response;
       },
@@ -175,9 +167,7 @@ export const notificationApiSlice = apiSlice.injectEndpoints({
         message?: string;
       }) => {
         if (!response.success) {
-          throw new Error(
-            response.message || "通知の更新に失敗しました"
-          );
+          throw new Error(response.message || "通知の更新に失敗しました");
         }
         return response;
       },
@@ -193,16 +183,14 @@ export const notificationApiSlice = apiSlice.injectEndpoints({
         url: `/api/notifications/${notificationId}`,
         method: "DELETE",
       }),
-      transformResponse: (response: {
-        success: boolean;
-        message?: string;
-      }) => {
+      transformResponse: (response: { success: boolean; message?: string }) => {
         if (!response.success) {
-          throw new Error(
-            response.message || "通知の削除に失敗しました"
-          );
+          throw new Error(response.message || "通知の削除に失敗しました");
         }
-        return response;
+        return {
+          success: response.success,
+          message: response.message || "通知が正常に削除されました",
+        };
       },
       invalidatesTags: ["Notifications"],
     }),
@@ -218,4 +206,3 @@ export const {
   useMarkAllAsReadMutation,
   useDeleteNotificationMutation,
 } = notificationApiSlice;
-

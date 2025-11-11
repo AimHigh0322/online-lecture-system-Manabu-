@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, Send, Users, User, AlertCircle, Info, CheckCircle, AlertTriangle } from "lucide-react";
+import { Send, Users, User, AlertCircle, Info, CheckCircle, AlertTriangle } from "lucide-react";
 import { BossLayout } from "../../components/layout/AdminLayout";
 import {
   getStoredUser,

@@ -121,13 +121,6 @@ export const ViewMaterialModal: React.FC<ViewMaterialModalProps> = ({
 
                         // Test if the URL is accessible
                         fetch(target.src, { method: "HEAD" })
-                          .then((response) => {
-                            console.log(
-                              "Video URL response:",
-                              response.status,
-                              response.statusText
-                            );
-                          })
                           .catch((err) => {
                             console.error("Video URL fetch error:", err);
                           });

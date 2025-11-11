@@ -56,7 +56,6 @@ const ExamSettingsPage: React.FC = () => {
         }
       } else {
         // If no settings exist, use default values
-        console.log("No exam settings found, using defaults");
       }
     } catch (error) {
       console.error("Error fetching exam settings:", error);

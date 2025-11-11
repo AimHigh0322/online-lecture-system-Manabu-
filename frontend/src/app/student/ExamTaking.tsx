@@ -442,7 +442,6 @@ export const ExamTaking: React.FC = () => {
 
       if (response.ok) {
         const result = await response.json();
-        console.log("Exam submitted successfully:", result);
         // Clear saved answers from localStorage after successful submission
         localStorage.removeItem(EXAM_ANSWERS_STORAGE_KEY);
 

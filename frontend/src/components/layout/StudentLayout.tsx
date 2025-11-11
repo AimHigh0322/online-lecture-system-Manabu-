@@ -10,6 +10,8 @@ import {
   FileText,
   Edit,
   HelpCircle,
+  Menu,
+  X,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { logout, getAuthToken } from "../../api/auth/authService";
@@ -24,6 +26,7 @@ interface StudentLayoutProps {
 export const StudentLayout: React.FC<StudentLayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string>("/img/default_avatar.png");
   const [showExamModal, setShowExamModal] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -151,19 +154,34 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children }) => {
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16 min-w-0">
-            {/* Logo */}
-            <div className="flex items-center space-x-2 flex-shrink-0">
-              <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-lg font-bold text-gray-800 whitespace-nowrap">
-                  学ぼう国際研修センター
-                </h1>
+            {/* Logo and Mobile Menu Button */}
+            <div className="flex items-center space-x-3 flex-shrink-0">
+              {/* Mobile Menu Button */}
+              <button
+                onClick={() => setShowMobileMenu(!showMobileMenu)}
+                className="lg:hidden p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                aria-label="メニュー"
+              >
+                {showMobileMenu ? (
+                  <X className="w-6 h-6" />
+                ) : (
+                  <Menu className="w-6 h-6" />
+                )}
+              </button>
+              {/* Logo - Hidden on mobile */}
+              <div className="hidden lg:flex items-center space-x-2">
+                <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+                  <BookOpen className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold text-gray-800 whitespace-nowrap">
+                    学ぼう国際研修センター
+                  </h1>
+                </div>
               </div>
             </div>
 
-            {/* Navigation */}
+            {/* Desktop Navigation */}
             <nav className="hidden lg:flex items-center space-x-8 whitespace-nowrap">
               <button
                 className={`flex items-center space-x-2 font-medium transition-colors cursor-pointer text-sm ${
@@ -260,6 +278,71 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children }) => {
             </div>
           </div>
         </div>
+
+        {/* Mobile Navigation Menu */}
+        {showMobileMenu && (
+          <div className="lg:hidden border-t border-gray-200 bg-white">
+            <nav className="px-4 py-4 space-y-2">
+              <button
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors cursor-pointer text-left ${
+                  location.pathname === "/"
+                    ? "bg-orange-50 text-orange-600"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
+                onClick={() => {
+                  navigate("/");
+                  setShowMobileMenu(false);
+                }}
+              >
+                <Home className="w-5 h-5" />
+                <span className="font-medium">HOME</span>
+              </button>
+              <button
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors cursor-pointer text-left ${
+                  location.pathname === "/courses"
+                    ? "bg-orange-50 text-orange-600"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
+                onClick={() => {
+                  navigate("/courses");
+                  setShowMobileMenu(false);
+                }}
+              >
+                <FileText className="w-5 h-5" />
+                <span className="font-medium">講習内容と費用</span>
+              </button>
+              <button
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors cursor-pointer text-left ${
+                  location.pathname === "/exam-room"
+                    ? "bg-orange-50 text-orange-600"
+                    : "text-gray-700 hover:bg-gray-100"
+                } ${eligibilityLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+                onClick={() => {
+                  handleExamClick();
+                  setShowMobileMenu(false);
+                }}
+                disabled={eligibilityLoading}
+              >
+                <Edit className="w-5 h-5" />
+                <span className="font-medium">試験ルーム</span>
+              </button>
+              <button
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors cursor-pointer text-left ${
+                  location.pathname === "/help"
+                    ? "bg-orange-50 text-orange-600"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
+                onClick={() => {
+                  navigate("/help");
+                  setShowMobileMenu(false);
+                }}
+              >
+                <HelpCircle className="w-5 h-5" />
+                <span className="font-medium">ヘルプ</span>
+              </button>
+            </nav>
+          </div>
+        )}
       </header>
 
       {/* Main Content */}

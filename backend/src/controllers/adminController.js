@@ -128,7 +128,6 @@ const getAllUsers = async (req, res) => {
         username: user.username,
         email: user.email,
         role: user.role,
-        displayName: profile?.displayName || user.username,
         avatar: profile?.avatar || "",
         phone: profile?.phone || "",
         gender: profile?.gender || "",
@@ -189,7 +188,7 @@ const issueCertificate = async (req, res) => {
     }
 
     const profile = await Profile.findOne({ userId });
-    const name = profile?.displayName || user.username || user.email;
+    const name = user.username || user.email;
     let gender = "未設定";
     if (profile?.gender === "男性") {
       gender = "男";
@@ -293,14 +292,8 @@ const getCertificate = async (req, res) => {
     const { userId } = req.params;
     const requestingUserId = req.user.userId;
 
-    console.log("=== getCertificate Debug ===");
-    console.log("Requested userId:", userId);
-    console.log("Requesting userId:", requestingUserId);
-    console.log("User role:", req.user.role);
-
     // Users can only get their own certificate, or admins can get any certificate
     if (userId !== requestingUserId && req.user.role !== "admin") {
-      console.log("Access denied: userId mismatch");
       return res.status(403).json({
         success: false,
         message: "Access denied",
@@ -321,12 +314,6 @@ const getCertificate = async (req, res) => {
     // Also try finding by userId as string in case it's stored differently
     if (!certificate) {
       certificate = await Certificate.findOne({ userId: String(userId) });
-    }
-
-    console.log("Certificate found:", certificate ? "Yes" : "No");
-    if (certificate) {
-      console.log("Certificate userId:", certificate.userId);
-      console.log("Certificate data:", JSON.stringify(certificate, null, 2));
     }
 
     if (!certificate) {

@@ -12,7 +12,6 @@ interface Profile {
   username?: string;
   email?: string;
   role: string;
-  displayName?: string;
   avatar?: string;
   phone?: string;
   gender?: string;

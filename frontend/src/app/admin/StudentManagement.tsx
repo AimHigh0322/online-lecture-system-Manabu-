@@ -26,7 +26,6 @@ interface StudentProfile {
   username: string;
   email: string;
   role: string;
-  displayName: string;
   avatar: string;
   phone: string;
   gender: string;
@@ -55,9 +54,8 @@ export const StudentManagement: React.FC = () => {
   const [students, setStudents] = useState<StudentWithExamStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedStudent, setSelectedStudent] = useState<StudentWithExamStatus | null>(
-    null
-  );
+  const [selectedStudent, setSelectedStudent] =
+    useState<StudentWithExamStatus | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isIssuingCertificate, setIsIssuingCertificate] = useState(false);
@@ -66,7 +64,9 @@ export const StudentManagement: React.FC = () => {
     student: StudentWithExamStatus;
     message: string;
   } | null>(null);
-  const [sortField, setSortField] = useState<keyof StudentWithExamStatus | null>(null);
+  const [sortField, setSortField] = useState<
+    keyof StudentWithExamStatus | null
+  >(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   // Pagination state - 6 items per page
   const [page, setPage] = useState(1);
@@ -97,7 +97,9 @@ export const StudentManagement: React.FC = () => {
           data.examHistories &&
           Array.isArray(data.examHistories) &&
           data.examHistories.length > 0 &&
-          data.examHistories.some((exam: { passed?: boolean }) => exam.passed === true)
+          data.examHistories.some(
+            (exam: { passed?: boolean }) => exam.passed === true
+          )
         );
       }
       return false;
@@ -186,8 +188,7 @@ export const StudentManagement: React.FC = () => {
   const filteredStudents = students.filter((student) => {
     const matchesSearch =
       student.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.displayName.toLowerCase().includes(searchTerm.toLowerCase());
+      student.email.toLowerCase().includes(searchTerm.toLowerCase());
 
     return matchesSearch;
   });
@@ -256,7 +257,7 @@ export const StudentManagement: React.FC = () => {
     setConfirmAction({
       type: "delete",
       student,
-      message: `${student.displayName}を削除しますか？この操作は取り消せません。`,
+      message: `${student.username}を削除しますか？この操作は取り消せません。`,
     });
     setShowConfirmModal(true);
   };
@@ -266,7 +267,7 @@ export const StudentManagement: React.FC = () => {
     setConfirmAction({
       type: "block",
       student,
-      message: `${student.displayName}を${action}しますか？`,
+      message: `${student.username}を${action}しますか？`,
     });
     setShowConfirmModal(true);
   };
@@ -392,7 +393,7 @@ export const StudentManagement: React.FC = () => {
           showToast({
             type: "success",
             title: "削除完了",
-            message: `${student.displayName}を削除しました`,
+            message: `${student.username}を削除しました`,
             duration: 2000,
           });
           fetchStudents();
@@ -417,7 +418,7 @@ export const StudentManagement: React.FC = () => {
           showToast({
             type: "success",
             title: "更新完了",
-            message: `${student.displayName}を${action}しました`,
+            message: `${student.username}を${action}しました`,
             duration: 2000,
           });
           fetchStudents();
@@ -497,11 +498,11 @@ export const StudentManagement: React.FC = () => {
                 <tr>
                   <th
                     className={`px-6 py-4 text-center text-sm font-bold cursor-pointer transition-colors ${
-                      sortField === "displayName"
+                      sortField === "username"
                         ? "text-orange-600 bg-orange-50"
                         : "text-gray-700 hover:text-orange-600"
                     }`}
-                    onClick={() => handleSort("displayName")}
+                    onClick={() => handleSort("username")}
                   >
                     学生情報
                   </th>
@@ -565,7 +566,7 @@ export const StudentManagement: React.FC = () => {
                                   }${student.avatar}`
                                 : "/img/default_avatar.png"
                             }
-                            alt={student.displayName}
+                            alt={student.username}
                             className="w-full h-full object-cover"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
@@ -575,10 +576,7 @@ export const StudentManagement: React.FC = () => {
                         </div>
                         <div className="text-center">
                           <div className="font-medium text-slate-800">
-                            {student.displayName}
-                          </div>
-                          <div className="text-sm text-slate-500">
-                            @{student.username}
+                            {student.username}
                           </div>
                         </div>
                       </div>
@@ -724,7 +722,7 @@ export const StudentManagement: React.FC = () => {
                             }${selectedStudent.avatar}`
                           : "/img/default_avatar.png"
                       }
-                      alt={selectedStudent.displayName}
+                      alt={selectedStudent.username}
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
@@ -734,11 +732,8 @@ export const StudentManagement: React.FC = () => {
                   </div>
                   <div>
                     <h4 className="text-xl font-semibold text-slate-800">
-                      {selectedStudent.displayName}
+                      {selectedStudent.username}
                     </h4>
-                    <p className="text-slate-600">
-                      @{selectedStudent.username}
-                    </p>
                   </div>
                 </div>
 
@@ -763,14 +758,19 @@ export const StudentManagement: React.FC = () => {
                       最初のコース購入日
                     </label>
                     <p className="text-slate-800">
-                      {selectedStudent.courses && selectedStudent.courses.length > 0
+                      {selectedStudent.courses &&
+                      selectedStudent.courses.length > 0
                         ? (() => {
-                            const sortedByEnrollment = [...selectedStudent.courses].sort(
+                            const sortedByEnrollment = [
+                              ...selectedStudent.courses,
+                            ].sort(
                               (a, b) =>
                                 new Date(a.enrollmentAt).getTime() -
                                 new Date(b.enrollmentAt).getTime()
                             );
-                            return formatDate(sortedByEnrollment[0].enrollmentAt);
+                            return formatDate(
+                              sortedByEnrollment[0].enrollmentAt
+                            );
                           })()
                         : "コース未購入"}
                     </p>
@@ -780,18 +780,24 @@ export const StudentManagement: React.FC = () => {
                       最後のコース完了日
                     </label>
                     <p className="text-slate-800">
-                      {selectedStudent.courses && selectedStudent.courses.length > 0
+                      {selectedStudent.courses &&
+                      selectedStudent.courses.length > 0
                         ? (() => {
-                            const completedCourses = selectedStudent.courses.filter(
-                              (c) => c.status === "completed" && c.completedAt
-                            );
+                            const completedCourses =
+                              selectedStudent.courses.filter(
+                                (c) => c.status === "completed" && c.completedAt
+                              );
                             if (completedCourses.length > 0) {
-                              const sortedByCompletion = [...completedCourses].sort(
+                              const sortedByCompletion = [
+                                ...completedCourses,
+                              ].sort(
                                 (a, b) =>
                                   new Date(b.completedAt || 0).getTime() -
                                   new Date(a.completedAt || 0).getTime()
                               );
-                              return formatDate(sortedByCompletion[0].completedAt!);
+                              return formatDate(
+                                sortedByCompletion[0].completedAt!
+                              );
                             }
                             return "コース未完了";
                           })()

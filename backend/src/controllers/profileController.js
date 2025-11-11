@@ -266,7 +266,6 @@ const uploadAvatar = async (req, res) => {
       // Create new profile if it doesn't exist
       profile = new Profile({
         userId,
-        displayName: user.username,
       });
     }
 

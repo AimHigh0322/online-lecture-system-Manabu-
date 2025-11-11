@@ -254,7 +254,6 @@ const getUserProfile = async (req, res) => {
       username: user.username,
       email: user.email,
       role: user.role,
-      displayName: profile?.displayName || user.username,
       avatar: profile?.avatar || "",
       phone: profile?.phone || "",
       gender: profile?.gender || "未設定",

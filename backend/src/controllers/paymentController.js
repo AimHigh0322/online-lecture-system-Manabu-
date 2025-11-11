@@ -38,12 +38,6 @@ const createPaymentSession = async (req, res) => {
       }
     }
 
-    console.log("Payment redirect URLs:", {
-      frontendUrl,
-      nodeEnv: process.env.NODE_ENV,
-      frontendUrlEnv: process.env.FRONTEND_URL,
-    });
-
     // Validate input
     if (!courseId) {
       return res.status(400).json({

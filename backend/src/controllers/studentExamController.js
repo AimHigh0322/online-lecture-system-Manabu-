@@ -350,20 +350,8 @@ const submitExam = async (req, res) => {
     const { answers } = req.body;
     const user = req.user;
 
-    // Log the received answers for debugging
-    console.log("=== EXAM SUBMISSION RECEIVED ===");
-    console.log("Attempt ID:", attemptId);
-    console.log("Student ID:", user.id);
-    console.log("Student Name:", user.username || user.email);
-    console.log("Number of answers:", answers ? answers.length : 0);
-    console.log("Answers received:", JSON.stringify(answers, null, 2));
-    console.log("=================================");
-
     // Handle mock attempt ID for testing purposes
     if (attemptId === "mock-attempt-id") {
-      console.log(
-        "Mock attempt ID detected - performing grading simulation for testing"
-      );
 
       // Use StandaloneQuestion model to find questions by their actual IDs
       const StandaloneQuestion = require("../model/StandaloneQuestion");
@@ -381,10 +369,6 @@ const submitExam = async (req, res) => {
 
       let totalScore = 0;
       const gradedAnswers = [];
-
-      console.log("=== GRADING PROCESS ===");
-      console.log("Total questions presented to examinee:", totalQuestions);
-      console.log("Questions answered by student:", answers.length);
 
       // Create a map of student answers for quick lookup
       const studentAnswersMap = new Map();
@@ -405,20 +389,10 @@ const submitExam = async (req, res) => {
           console.warn(`Question ${questionId} not found, skipping`);
           continue;
         }
-        console.log("Grading question ID:", question._id);
-        console.log("Found question:", question.content);
-        console.log("Question type:", question.type);
 
         // Check if student answered this question
         const studentAnswer = studentAnswersMap.get(question._id.toString());
         const studentAnswered = !!studentAnswer;
-
-        console.log("Student answered this question:", studentAnswered);
-        if (studentAnswered) {
-          console.log("Student answer:", studentAnswer.answer);
-        } else {
-          console.log("Student did not answer this question");
-        }
 
         let isCorrect = false;
         let pointsEarned = 0;
@@ -428,23 +402,11 @@ const submitExam = async (req, res) => {
           if (studentAnswered) {
             isCorrect = studentAnswer.answer === question.correctAnswer;
           }
-          console.log("Correct answer:", question.correctAnswer);
-          console.log(
-            "Student answer:",
-            studentAnswered ? studentAnswer.answer : "No answer"
-          );
-          console.log("Is correct:", isCorrect);
         } else if (question.type === "single_choice") {
           const correctOption = question.options.find((opt) => opt.isCorrect);
           if (studentAnswered) {
             isCorrect = studentAnswer.answer === correctOption?.id;
           }
-          console.log("Correct option ID:", correctOption?.id);
-          console.log(
-            "Student answer:",
-            studentAnswered ? studentAnswer.answer : "No answer"
-          );
-          console.log("Is correct:", isCorrect);
         } else if (question.type === "multiple_choice") {
           const correctOptionIds = question.options
             .filter((opt) => opt.isCorrect)
@@ -458,12 +420,6 @@ const submitExam = async (req, res) => {
               JSON.stringify(studentAnswers) ===
               JSON.stringify(correctOptionIds);
           }
-          console.log("Correct option IDs:", correctOptionIds);
-          console.log(
-            "Student answers:",
-            studentAnswered ? studentAnswer.answer : "No answer"
-          );
-          console.log("Is correct:", isCorrect);
         }
 
         if (isCorrect) {
@@ -502,18 +458,6 @@ const submitExam = async (req, res) => {
           ? Math.round((totalScore / mockTotalQuestions) * 100)
           : 0;
       const passed = percentage >= passingScore;
-
-      console.log("=== GRADING RESULTS ===");
-      console.log("Total Score:", totalScore);
-      console.log("Total Questions (admin-submitted):", mockTotalQuestions);
-      console.log("Percentage:", percentage + "%");
-      console.log("Passed:", passed);
-      console.log(
-        "Score divided by total questions:",
-        totalScore + "/" + mockTotalQuestions
-      );
-      console.log("Graded Answers:", JSON.stringify(gradedAnswers, null, 2));
-      console.log("======================");
 
       return res.json({
         success: true,
@@ -592,11 +536,6 @@ const submitExam = async (req, res) => {
     let totalScore = 0;
     const gradedAnswers = [];
 
-    console.log("=== REAL EXAM GRADING PROCESS ===");
-    console.log("Total questions (admin-submitted):", totalQuestions);
-    console.log("Questions presented to student:", presentedQuestions.length);
-    console.log("Questions answered by student:", answers.length);
-
     // Create a map of student answers for quick lookup
     const studentAnswersMap = new Map();
     answers.forEach((answer) => {
@@ -609,27 +548,17 @@ const submitExam = async (req, res) => {
       questionsMap.set(question._id.toString(), question);
     });
 
-    // Grade only the questions that were presented to the examinee
-    for (const questionId of questionIds) {
-      const question = questionsMap.get(questionId);
-      if (!question) {
-        console.warn(`Question ${questionId} not found, skipping`);
-        continue;
-      }
-      console.log("Grading question ID:", question._id);
-      console.log("Found question:", question.content);
-      console.log("Question type:", question.type);
+      // Grade only the questions that were presented to the examinee
+      for (const questionId of questionIds) {
+        const question = questionsMap.get(questionId);
+        if (!question) {
+          console.warn(`Question ${questionId} not found, skipping`);
+          continue;
+        }
 
-      // Check if student answered this question
-      const studentAnswer = studentAnswersMap.get(question._id.toString());
-      const studentAnswered = !!studentAnswer;
-
-      console.log("Student answered this question:", studentAnswered);
-      if (studentAnswered) {
-        console.log("Student answer:", studentAnswer.answer);
-      } else {
-        console.log("Student did not answer this question");
-      }
+        // Check if student answered this question
+        const studentAnswer = studentAnswersMap.get(question._id.toString());
+        const studentAnswered = !!studentAnswer;
 
       let isCorrect = false;
       let pointsEarned = 0;
@@ -639,23 +568,11 @@ const submitExam = async (req, res) => {
         if (studentAnswered) {
           isCorrect = studentAnswer.answer === question.correctAnswer;
         }
-        console.log("Correct answer:", question.correctAnswer);
-        console.log(
-          "Student answer:",
-          studentAnswered ? studentAnswer.answer : "No answer"
-        );
-        console.log("Is correct:", isCorrect);
       } else if (question.type === "single_choice") {
         const correctOption = question.options.find((opt) => opt.isCorrect);
         if (studentAnswered) {
           isCorrect = studentAnswer.answer === correctOption?.id;
         }
-        console.log("Correct option ID:", correctOption?.id);
-        console.log(
-          "Student answer:",
-          studentAnswered ? studentAnswer.answer : "No answer"
-        );
-        console.log("Is correct:", isCorrect);
       } else if (question.type === "multiple_choice") {
         const correctOptionIds = question.options
           .filter((opt) => opt.isCorrect)
@@ -668,12 +585,6 @@ const submitExam = async (req, res) => {
           isCorrect =
             JSON.stringify(studentAnswers) === JSON.stringify(correctOptionIds);
         }
-        console.log("Correct option IDs:", correctOptionIds);
-        console.log(
-          "Student answers:",
-          studentAnswered ? studentAnswer.answer : "No answer"
-        );
-        console.log("Is correct:", isCorrect);
       }
 
       if (isCorrect) {
@@ -705,19 +616,6 @@ const submitExam = async (req, res) => {
     const percentage =
       totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0;
     const passed = percentage >= passingScore;
-
-    console.log("=== REAL EXAM GRADING RESULTS ===");
-    console.log("Total Score:", totalScore);
-    console.log("Total Questions (admin-submitted):", totalQuestions);
-    console.log("Questions presented to student:", presentedQuestions.length);
-    console.log("Percentage:", percentage + "%");
-    console.log("Passed:", passed);
-    console.log(
-      "Score divided by total questions (admin-submitted):",
-      totalScore + "/" + totalQuestions
-    );
-    console.log("Graded Answers:", JSON.stringify(gradedAnswers, null, 2));
-    console.log("==================================");
 
     // Update attempt with submitted answers and grading results
     const completedAttempt = await ExamAttempt.findByIdAndUpdate(
@@ -759,9 +657,6 @@ const submitExam = async (req, res) => {
 
         if (notifications.length > 0) {
           await Notification.insertMany(notifications);
-          console.log(
-            `Sent exam pass notification to ${admins.length} admin(s)`
-          );
         }
       } catch (error) {
         console.error("Error sending exam pass notification:", error);

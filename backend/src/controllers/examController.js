@@ -20,15 +20,6 @@ const submitExam = async (req, res) => {
 
     const user = req.user;
 
-    console.log("=== EXAM SUBMISSION RECEIVED ===");
-    console.log("Examinee ID:", examineeId);
-    console.log("Exam ID:", examId);
-    console.log("User ID:", user.id);
-    console.log("Number of answers:", answers.length);
-    console.log("Request totalQuestions:", requestTotalQuestions);
-    console.log("Answers:", JSON.stringify(answers, null, 2));
-    console.log("=================================");
-
     // Get exam settings for time limit and passing score
     const examSettings = await ExamSettings.getSettings();
     const timeLimitMinutes = examSettings.timeLimit || 60; // Default to 60 minutes
@@ -65,11 +56,6 @@ const submitExam = async (req, res) => {
     let totalScore = 0;
     const gradedAnswers = [];
 
-    console.log("=== GRADING PROCESS ===");
-    console.log("Total questions (admin-submitted):", totalQuestions);
-    console.log("Questions presented to examinee:", presentedQuestions.length);
-    console.log("Questions answered by examinee:", answers.length);
-
     // Create a map of examinee answers for quick lookup
     const examineeAnswersMap = new Map();
     answers.forEach((answer) => {
@@ -89,20 +75,10 @@ const submitExam = async (req, res) => {
         console.warn(`Question ${questionId} not found, skipping`);
         continue;
       }
-      console.log("Grading question ID:", question._id);
-      console.log("Found question:", question.content);
-      console.log("Question type:", question.type);
 
       // Check if examinee answered this question
       const examineeAnswer = examineeAnswersMap.get(question._id.toString());
       const examineeAnswered = !!examineeAnswer;
-
-      console.log("Examinee answered this question:", examineeAnswered);
-      if (examineeAnswered) {
-        console.log("Examinee answer:", examineeAnswer.answer);
-      } else {
-        console.log("Examinee did not answer this question");
-      }
 
       let isCorrect = false;
       let pointsEarned = 0;
@@ -112,23 +88,11 @@ const submitExam = async (req, res) => {
         if (examineeAnswered) {
           isCorrect = examineeAnswer.answer === question.correctAnswer;
         }
-        console.log("Correct answer:", question.correctAnswer);
-        console.log(
-          "Examinee answer:",
-          examineeAnswered ? examineeAnswer.answer : "No answer"
-        );
-        console.log("Is correct:", isCorrect);
       } else if (question.type === "single_choice") {
         const correctOption = question.options.find((opt) => opt.isCorrect);
         if (examineeAnswered) {
           isCorrect = examineeAnswer.answer === correctOption?.id;
         }
-        console.log("Correct option ID:", correctOption?.id);
-        console.log(
-          "Examinee answer:",
-          examineeAnswered ? examineeAnswer.answer : "No answer"
-        );
-        console.log("Is correct:", isCorrect);
       } else if (question.type === "multiple_choice") {
         const correctOptionIds = question.options
           .filter((opt) => opt.isCorrect)
@@ -142,12 +106,6 @@ const submitExam = async (req, res) => {
             JSON.stringify(examineeAnswers) ===
             JSON.stringify(correctOptionIds);
         }
-        console.log("Correct option IDs:", correctOptionIds);
-        console.log(
-          "Examinee answers:",
-          examineeAnswered ? examineeAnswer.answer : "No answer"
-        );
-        console.log("Is correct:", isCorrect);
       }
 
       if (isCorrect) {
@@ -175,18 +133,6 @@ const submitExam = async (req, res) => {
       totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0;
     const passed = percentage >= examSettings.passingScore;
 
-    console.log("=== GRADING RESULTS ===");
-    console.log("Total Score:", totalScore);
-    console.log("Total Questions (admin-submitted):", totalQuestions);
-    console.log("Questions presented to examinee:", presentedQuestions.length);
-    console.log("Percentage:", percentage + "%");
-    console.log("Passing Score:", examSettings.passingScore + "%");
-    console.log("Passed:", passed);
-    console.log(
-      "Score divided by total questions (admin-submitted):",
-      totalScore + "/" + totalQuestions
-    );
-
     // Store exam results in the database
     const examResult = {
       examineeId: user.id,
@@ -207,9 +153,6 @@ const submitExam = async (req, res) => {
     // Save to examHistories collection
     const savedExamHistory = new ExamHistory(examResult);
     await savedExamHistory.save();
-
-    console.log("Exam results saved to database:", savedExamHistory._id);
-    console.log("Exam results:", JSON.stringify(examResult, null, 2));
 
     // If exam passed, send notification to all admins
     if (passed) {
@@ -233,9 +176,6 @@ const submitExam = async (req, res) => {
 
         if (notifications.length > 0) {
           await Notification.insertMany(notifications);
-          console.log(
-            `Sent exam pass notification to ${admins.length} admin(s)`
-          );
         }
       } catch (error) {
         console.error("Error sending exam pass notification:", error);

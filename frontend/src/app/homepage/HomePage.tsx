@@ -88,16 +88,16 @@ const HomePage: React.FC = () => {
 
                 <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-r-lg">
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    システムの特徴
+                    システムの主な機能
                   </h3>
                   <ul className="space-y-1 text-gray-700 text-sm">
                     <li className="flex items-start">
                       <span className="text-orange-500 mr-2">•</span>
-                      <span>リアルタイム双方向コミュニケーション</span>
+                      <span>AI顔認証による試験セキュリティ体制構築</span>
                     </li>
                     <li className="flex items-start">
                       <span className="text-orange-500 mr-2">•</span>
-                      <span>AI進捗管理と個別フィードバック</span>
+                      <span>Stripe決済による安全なコース購入</span>
                     </li>
                     <li className="flex items-start">
                       <span className="text-orange-500 mr-2">•</span>

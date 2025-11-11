@@ -15,7 +15,7 @@ export interface CourseData {
 }
 
 export interface ProfileData {
-  displayName?: string;
+  username?: string;
   email?: string;
   phone?: string;
   gender?: string;

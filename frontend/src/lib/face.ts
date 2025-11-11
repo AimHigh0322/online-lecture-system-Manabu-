@@ -12,7 +12,6 @@ export async function loadModels() {
     faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL), // landmarks
     faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL), // descriptors
   ]);
-  console.log("✅ Face-api.js models loaded");
 }
 
 /**

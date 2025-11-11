@@ -179,7 +179,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
 
         {/* Notification Detail Modal */}
         {selectedNotification && (
-          <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/50">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
             <div className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center space-x-3">

@@ -29,7 +29,7 @@ export interface UserProfile {
   groupId: string;
   email?: string;
   phone?: string;
-  displayName?: string;
+  username?: string;
   avatar?: string;
   gender?: string;
   birthday?: string;
