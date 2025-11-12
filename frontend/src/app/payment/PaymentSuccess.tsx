@@ -293,7 +293,6 @@ export const PaymentSuccess: React.FC = () => {
               <li>
                 • ログイン情報を忘れた場合は、サポートまでお問い合わせください
               </li>
-              <li>• コースへのアクセスは24時間以内に開始できます</li>
             </ul>
           </div>
         )}

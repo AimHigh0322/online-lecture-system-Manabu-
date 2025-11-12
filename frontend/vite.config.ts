@@ -4,12 +4,13 @@ import react from "@vitejs/plugin-react-swc";
 
 export default defineConfig(({ mode }) => {
   // Remote server configuration
-  // Set VITE_REMOTE_HOST env var to override, or it defaults to your server IP
   const remoteHost = process.env.VITE_REMOTE_HOST || "85.131.238.90";
-  // Use remote host for HMR when explicitly set, or in production mode
-  // For local dev, set VITE_REMOTE_HOST="" to use localhost
-  const hmrHost =
-    process.env.VITE_REMOTE_HOST === "" ? "localhost" : remoteHost;
+  const isDev = mode === "development";
+
+  // For remote deployments, WebSocket connections often fail due to firewall/network issues
+  // HMR is disabled by default for remote servers to avoid connection errors
+  // Set VITE_ENABLE_HMR=true to enable HMR (requires proper WebSocket configuration)
+  const enableHMR = process.env.VITE_ENABLE_HMR === "true";
 
   return {
     plugins: [react(), tailwindcss()],
@@ -17,11 +18,19 @@ export default defineConfig(({ mode }) => {
       host: "0.0.0.0", // Listen on all interfaces for VPS deployment
       port: 5173,
       strictPort: false,
-      // Configure HMR for remote access
-      hmr: {
-        host: hmrHost,
-        port: 5173,
-        protocol: "ws",
+      // HMR is disabled by default for remote deployments to prevent WebSocket errors
+      // The application will work normally, you'll just need to manually refresh after changes
+      // To enable HMR, set VITE_ENABLE_HMR=true and ensure port 5173 is open for WebSocket connections
+      hmr:
+        isDev && enableHMR
+          ? {
+              host: remoteHost,
+              port: 5173,
+              protocol: "ws",
+            }
+          : false,
+      watch: {
+        usePolling: process.env.VITE_USE_POLLING === "true",
       },
       proxy: {
         "/api": {
@@ -31,6 +40,7 @@ export default defineConfig(({ mode }) => {
               : "http://localhost:4000",
           changeOrigin: true,
           secure: false,
+          ws: true,
         },
       },
     },

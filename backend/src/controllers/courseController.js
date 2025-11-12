@@ -218,14 +218,28 @@ const updateCourseProgress = async (req, res) => {
 
     // Check exam eligibility for this user after updating progress
     try {
-      const allUserCourses = await Course.find({
+      // Get all available courses from materials
+      const allCourseIds = await Material.distinct("courseId");
+
+      // Get all courses purchased by this user
+      const userCourses = await Course.find({
         userId: userId,
         status: { $in: ["active", "completed"] },
-      }).select("completionRate");
+      }).select("courseId completionRate");
 
-      const allCoursesCompleted = allUserCourses.every(
-        (course) => course.completionRate === 100
+      // Check if user has purchased all courses
+      const purchasedCourseIds = userCourses.map((c) => c.courseId);
+      const hasAllCourses = allCourseIds.every((courseId) =>
+        purchasedCourseIds.includes(courseId)
       );
+
+      // Only check completion if user has all courses
+      let allCoursesCompleted = false;
+      if (hasAllCourses) {
+        allCoursesCompleted = userCourses.every(
+          (course) => course.completionRate === 100
+        );
+      }
 
       // Update exam eligibility for all user's courses
       await Course.updateMany(
@@ -264,85 +278,101 @@ const checkExamEligibility = async (req, res) => {
       });
     }
 
-    // Get all active and completed courses for this user
-    const courses = await Course.find({
+    // Step 1: Get all available courses from materials collection
+    const allCourseIds = await Material.distinct("courseId");
+
+    if (!allCourseIds || allCourseIds.length === 0) {
+      return res.json({
+        success: true,
+        examEligible: false,
+        courses: [],
+        message: "コースが存在しません",
+      });
+    }
+
+    // Step 2: Get all courses purchased by this user
+    const userCourses = await Course.find({
       userId: userId,
       status: { $in: ["active", "completed"] },
-    }).select("courseId courseName completionRate examEligible status videoProgress documentProgress");
+    }).select("courseId courseName completionRate status");
 
-    // Check if all courses are fully completed (all materials finished)
-    const courseCompletionStatus = await Promise.all(
-      courses.map(async (course) => {
-        // Get all materials for this course
-        const allMaterials = await Material.find({
-          courseId: course.courseId,
-        }).select("_id title type");
+    // Step 3: Check if user has purchased all courses
+    const purchasedCourseIds = userCourses.map((c) => c.courseId);
+    const hasAllCourses = allCourseIds.every((courseId) =>
+      purchasedCourseIds.includes(courseId)
+    );
 
-        if (allMaterials.length === 0) {
-          // If no materials exist, course cannot be completed
-          return { courseId: course.courseId, completed: false };
+    let allCoursesCompleted = false;
+    let coursesWithStatus = [];
+
+    if (!hasAllCourses) {
+      // User hasn't purchased all courses
+      // Get course names from materials for all courses
+      const materials = await Material.find({
+        courseId: { $in: allCourseIds },
+      }).select("courseId courseName");
+
+      // Create a map of courseId to courseName
+      const courseNameMap = new Map();
+      materials.forEach((material) => {
+        if (!courseNameMap.has(material.courseId)) {
+          courseNameMap.set(material.courseId, material.courseName);
         }
+      });
 
-        // Check if all video materials are 100% completed
-        const videoMaterials = allMaterials.filter((m) => m.type === "video");
-        const allVideosCompleted = videoMaterials.every((material) => {
-          const progress = course.videoProgress.find(
-            (vp) => vp.materialName === material.title
-          );
-          return progress && progress.progress === 100;
-        });
+      // Format response with all courses (purchased and unpurchased)
+      coursesWithStatus = allCourseIds.map((courseId) => {
+        const userCourse = userCourses.find((c) => c.courseId === courseId);
+        if (userCourse) {
+          return {
+            courseId: userCourse.courseId,
+            courseName: userCourse.courseName,
+            completionRate: userCourse.completionRate || 0,
+            status: userCourse.status,
+          };
+        } else {
+          return {
+            courseId: courseId,
+            courseName: courseNameMap.get(courseId) || courseId,
+            completionRate: 0,
+            status: "not_purchased",
+          };
+        }
+      });
 
-        // Check if all PDF materials are completed
-        const pdfMaterials = allMaterials.filter((m) => m.type === "pdf");
-        const allPdfsCompleted = pdfMaterials.every((material) => {
-          return course.documentProgress.some(
-            (dp) => dp.materialName === material.title
-          );
-        });
-
-        return {
-          courseId: course.courseId,
-          completed: allVideosCompleted && allPdfsCompleted,
-        };
-      })
-    );
-
-    const allCoursesCompleted = courseCompletionStatus.every(
-      (status) => status.completed
-    );
-
-    // Update exam eligibility for all courses
-    if (allCoursesCompleted) {
-      await Course.updateMany(
-        { userId: userId, status: { $in: ["active", "completed"] } },
-        { examEligible: true }
-      );
-    } else {
+      // Update exam eligibility to false
       await Course.updateMany(
         { userId: userId, status: { $in: ["active", "completed"] } },
         { examEligible: false }
       );
-    }
-
-    // Format courses with completion status
-    const coursesWithStatus = courses.map((course) => {
-      const status = courseCompletionStatus.find(
-        (s) => s.courseId === course.courseId
+    } else {
+      // Step 4: User has purchased all courses, check if all completion rates are 100%
+      allCoursesCompleted = userCourses.every(
+        (course) => course.completionRate === 100
       );
-      return {
+
+      // Format courses with completion status
+      coursesWithStatus = userCourses.map((course) => ({
         courseId: course.courseId,
         courseName: course.courseName,
-        completionRate: course.completionRate,
-        examEligible: status?.completed || false,
+        completionRate: course.completionRate || 0,
         status: course.status,
-      };
-    });
+      }));
+
+      // Update exam eligibility for all courses
+      await Course.updateMany(
+        { userId: userId, status: { $in: ["active", "completed"] } },
+        { examEligible: allCoursesCompleted }
+      );
+    }
 
     res.json({
       success: true,
       examEligible: allCoursesCompleted,
       courses: coursesWithStatus,
-      message: allCoursesCompleted
+      message: !hasAllCourses
+        ? "すべてのコースを購入する必要があります"
+        : allCoursesCompleted
         ? "すべてのコースが完了しました。試験を受けることができます。"
         : "まだコースが完了していません。",
     });
@@ -368,66 +398,85 @@ const getExamEligibility = async (req, res) => {
       });
     }
 
-    // Get all active and completed courses for this user
-    const courses = await Course.find({
+    // Step 1: Get all available courses from materials collection
+    const allCourseIds = await Material.distinct("courseId");
+
+    if (!allCourseIds || allCourseIds.length === 0) {
+      return res.json({
+        success: true,
+        examEligible: false,
+        courses: [],
+        message: "コースが存在しません",
+      });
+    }
+
+    // Step 2: Get all courses purchased by this user
+    const userCourses = await Course.find({
       userId: userId,
       status: { $in: ["active", "completed"] },
-    }).select("courseId courseName completionRate examEligible status videoProgress documentProgress");
+    }).select("courseId courseName completionRate status");
 
-    // Check if all courses are fully completed (all materials finished)
-    const courseCompletionStatus = await Promise.all(
-      courses.map(async (course) => {
-        // Get all materials for this course
-        const allMaterials = await Material.find({
-          courseId: course.courseId,
-        }).select("_id title type");
-
-        if (allMaterials.length === 0) {
-          // If no materials exist, course cannot be completed
-          return { courseId: course.courseId, completed: false };
-        }
-
-        // Check if all video materials are 100% completed
-        const videoMaterials = allMaterials.filter((m) => m.type === "video");
-        const allVideosCompleted = videoMaterials.every((material) => {
-          const progress = course.videoProgress.find(
-            (vp) => vp.materialName === material.title
-          );
-          return progress && progress.progress === 100;
-        });
-
-        // Check if all PDF materials are completed
-        const pdfMaterials = allMaterials.filter((m) => m.type === "pdf");
-        const allPdfsCompleted = pdfMaterials.every((material) => {
-          return course.documentProgress.some(
-            (dp) => dp.materialName === material.title
-          );
-        });
-
-        return {
-          courseId: course.courseId,
-          completed: allVideosCompleted && allPdfsCompleted,
-        };
-      })
+    // Step 3: Check if user has purchased all courses
+    const purchasedCourseIds = userCourses.map((c) => c.courseId);
+    const hasAllCourses = allCourseIds.every((courseId) =>
+      purchasedCourseIds.includes(courseId)
     );
 
-    const allCoursesCompleted = courseCompletionStatus.every(
-      (status) => status.completed
+    if (!hasAllCourses) {
+      // User hasn't purchased all courses
+      // Get course names from materials for all courses
+      const materials = await Material.find({
+        courseId: { $in: allCourseIds },
+      }).select("courseId courseName");
+
+      // Create a map of courseId to courseName
+      const courseNameMap = new Map();
+      materials.forEach((material) => {
+        if (!courseNameMap.has(material.courseId)) {
+          courseNameMap.set(material.courseId, material.courseName);
+        }
+      });
+
+      // Format response with all courses (purchased and unpurchased)
+      const allCoursesWithStatus = allCourseIds.map((courseId) => {
+        const userCourse = userCourses.find((c) => c.courseId === courseId);
+        if (userCourse) {
+          return {
+            courseId: userCourse.courseId,
+            courseName: userCourse.courseName,
+            completionRate: userCourse.completionRate || 0,
+            status: userCourse.status,
+          };
+        } else {
+          return {
+            courseId: courseId,
+            courseName: courseNameMap.get(courseId) || courseId,
+            completionRate: 0,
+            status: "not_purchased",
+          };
+        }
+      });
+
+      return res.json({
+        success: true,
+        examEligible: false,
+        courses: allCoursesWithStatus,
+        message: "すべてのコースを購入する必要があります",
+      });
+    }
+
+    // Step 4: User has purchased all courses, check if all completion rates are 100%
+    const allCoursesCompleted = userCourses.every(
+      (course) => course.completionRate === 100
     );
 
     // Format courses with completion status
-    const coursesWithStatus = courses.map((course) => {
-      const status = courseCompletionStatus.find(
-        (s) => s.courseId === course.courseId
-      );
-      return {
-        courseId: course.courseId,
-        courseName: course.courseName,
-        completionRate: course.completionRate,
-        examEligible: status?.completed || false,
-        status: course.status,
-      };
-    });
+    const coursesWithStatus = userCourses.map((course) => ({
+      courseId: course.courseId,
+      courseName: course.courseName,
+      completionRate: course.completionRate || 0,
+      status: course.status,
+    }));
 
     res.json({
       success: true,

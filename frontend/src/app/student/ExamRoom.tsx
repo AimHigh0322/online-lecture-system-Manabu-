@@ -107,9 +107,9 @@ export const ExamRoom: React.FC = () => {
 
               <button
                 onClick={handleStartTest}
-                disabled={eligibilityLoading || !eligibilityData?.examEligible}
+                disabled={eligibilityLoading}
                 className={`w-full max-w-md px-8 py-4 rounded-lg transition-all duration-200 font-semibold text-lg shadow-lg flex items-center justify-center space-x-3 ${
-                  eligibilityLoading || !eligibilityData?.examEligible
+                  eligibilityLoading
                     ? "bg-gray-400 text-white cursor-not-allowed"
                     : "bg-orange-500 text-white hover:bg-orange-600"
                 }`}
@@ -120,7 +120,7 @@ export const ExamRoom: React.FC = () => {
                     ? "確認中..."
                     : eligibilityData?.examEligible
                     ? "試験を開始"
-                    : "コースを完了してください"}
+                    : "試験を受ける"}
                 </span>
               </button>
             </div>

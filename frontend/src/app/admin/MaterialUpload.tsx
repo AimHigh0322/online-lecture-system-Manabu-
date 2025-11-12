@@ -54,7 +54,7 @@ const MaterialUpload: React.FC = () => {
   const [errors, setErrors] = useState<MaterialErrors>({});
   const [isCheckingTitle, setIsCheckingTitle] = useState(false);
   const [titleExists, setTitleExists] = useState(false);
-  const titleCheckTimeoutRef = useRef<number | null>(null);
+  const titleCheckTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Cleanup timeout on unmount
   useEffect(() => {

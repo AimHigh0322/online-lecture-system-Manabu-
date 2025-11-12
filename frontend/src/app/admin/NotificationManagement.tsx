@@ -243,7 +243,7 @@ export const NotificationManagement: React.FC = () => {
                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
                     required
                   >
-                    <option value="">選択してください</option>
+                    <option key="default" value="">選択してください</option>
                     {students.map((student) => (
                       <option key={student._id} value={student._id}>
                         {student.username} ({student.email})

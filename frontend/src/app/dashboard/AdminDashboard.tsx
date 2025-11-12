@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Youtube, ClipboardList, Cog, BookOpen, FilePlus, Bell, Award, TrendingUp, CheckCircle } from "lucide-react";
+import { Users, Youtube, ClipboardList, Cog, BookOpen, FilePlus, Bell, Award } from "lucide-react";
 import { getStoredUser, isAuthenticated, getAuthToken } from "../../api/auth/authService";
 import type { User as AuthUser } from "../../api/auth/authService";
 import { BossLayout } from "../../components/layout/AdminLayout";
