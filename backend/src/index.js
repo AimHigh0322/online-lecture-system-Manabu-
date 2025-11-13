@@ -8,19 +8,53 @@ const app = express();
 
 // Environment-based configuration
 const isProduction = process.env.NODE_ENV === "production";
-const corsOrigin = isProduction
-  ? process.env.PROD_CORS_ORIGIN ||
-    "http://manabou.co.jp:5173,http://85.131.238.90:5173"
-  : process.env.DEV_CORS_ORIGIN || "http://localhost:5173";
 
+// Build allowed origins list
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://85.131.238.90:5173",
+  "http://manabou.co.jp:5173",
+  "https://manabou.co.jp",
+  "http://manabou.co.jp",
+];
+
+// Add environment variable origins if provided
+if (isProduction && process.env.PROD_CORS_ORIGIN) {
+  const prodOrigins = process.env.PROD_CORS_ORIGIN.split(",").map((origin) =>
+    origin.trim()
+  );
+  allowedOrigins.push(...prodOrigins);
+} else if (!isProduction && process.env.DEV_CORS_ORIGIN) {
+  const devOrigins = process.env.DEV_CORS_ORIGIN.split(",").map((origin) =>
+    origin.trim()
+  );
+  allowedOrigins.push(...devOrigins);
+}
+
+// CORS configuration
 app.use(
   cors({
-    origin: corsOrigin?.split(",") || [
-      "http://localhost:5173",
-      "http://manabou.co.jp:5173",
-      "http://85.131.238.90:5173",
-    ],
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        // In development, allow all origins; in production, be strict
+        if (!isProduction) {
+          callback(null, true);
+        } else {
+          callback(new Error("Not allowed by CORS"));
+        }
+      }
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    exposedHeaders: ["Authorization"],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   })
 );
 app.use(express.json());

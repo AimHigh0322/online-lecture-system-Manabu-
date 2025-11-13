@@ -11,7 +11,13 @@ const Profile = require("../model/Profile");
  */
 const registerUser = async (req, res) => {
   try {
-    const { username, email, password, role = "student", faceDescriptor } = req.body;
+    const {
+      username,
+      email,
+      password,
+      role = "student",
+      faceDescriptor,
+    } = req.body;
 
     // Validate required fields
     if (!username || !email || !password) {
@@ -22,7 +28,11 @@ const registerUser = async (req, res) => {
     }
 
     // Face descriptor check
-    if (!faceDescriptor || !Array.isArray(faceDescriptor) || faceDescriptor.length === 0) {
+    if (
+      !faceDescriptor ||
+      !Array.isArray(faceDescriptor) ||
+      faceDescriptor.length === 0
+    ) {
       return res.status(400).json({
         success: false,
         message: "顔写真が必要です",
@@ -99,7 +109,6 @@ const registerUser = async (req, res) => {
     });
   }
 };
-
 
 /**
  * Login user with ID/Email and password
