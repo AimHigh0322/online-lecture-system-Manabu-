@@ -183,7 +183,8 @@ export const MaterialManagement: React.FC = () => {
     const filtered = materials.filter((material) => {
       const matchesSearch =
         material.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        material.description.toLowerCase().includes(searchTerm.toLowerCase());
+        material.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        material.courseName.toLowerCase().includes(searchTerm.toLowerCase());
 
       return matchesSearch;
     });
@@ -741,7 +742,7 @@ export const MaterialManagement: React.FC = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 md:w-5 md:h-5" />
             <input
               type="text"
-              placeholder="教材名、説明、タグで検索..."
+              placeholder="教材名、説明、コース名で検索..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-9 md:pl-10 pr-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
