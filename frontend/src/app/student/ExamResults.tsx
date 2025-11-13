@@ -36,6 +36,7 @@ interface ExamResult {
 }
 
 export const ExamResults: React.FC = () => {
+  console.log("ExamResults");
   const location = useLocation();
   const navigate = useNavigate();
   const examResults = location.state?.examResults as ExamResult;
