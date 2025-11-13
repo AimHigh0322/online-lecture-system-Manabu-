@@ -9,13 +9,15 @@ const app = express();
 // Environment-based configuration
 const isProduction = process.env.NODE_ENV === "production";
 const corsOrigin = isProduction
-  ? process.env.PROD_CORS_ORIGIN || "http://85.131.238.90:5173"
+  ? process.env.PROD_CORS_ORIGIN ||
+    "http://manabou.co.jp:5173,http://85.131.238.90:5173"
   : process.env.DEV_CORS_ORIGIN || "http://localhost:5173";
 
 app.use(
   cors({
     origin: corsOrigin?.split(",") || [
       "http://localhost:5173",
+      "http://manabou.co.jp:5173",
       "http://85.131.238.90:5173",
     ],
     credentials: true,
