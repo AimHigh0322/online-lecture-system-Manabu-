@@ -32,7 +32,7 @@ const createPaymentSession = async (req, res) => {
     } else {
       // Auto-detect based on environment
       if (process.env.NODE_ENV === "production") {
-        frontendUrl = "http://85.131.238.90:5173";
+        frontendUrl = "https://manabou.co.jp";
       } else {
         frontendUrl = "http://localhost:5173";
       }

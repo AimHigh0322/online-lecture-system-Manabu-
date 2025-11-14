@@ -34,7 +34,7 @@ export const PaymentSuccess: React.FC = () => {
     hasProcessedRef.current = true;
     try {
       const API_URL =
-        import.meta.env.VITE_API_URL || "http://85.131.238.90:4000";
+        import.meta.env.VITE_API_URL || "http://103.179.45.68:4000";
       const token = getAuthToken();
 
       if (!token) {

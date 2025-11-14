@@ -75,7 +75,7 @@ export const StudentManagement: React.FC = () => {
   const checkExamStatus = async (userId: string): Promise<boolean> => {
     try {
       const API_URL =
-        import.meta.env.VITE_API_URL || "http://85.131.238.90:4000";
+        import.meta.env.VITE_API_URL || "http://103.179.45.68:4000";
       const token = getAuthToken();
 
       // Check if student has passed any exam by querying admin exam histories endpoint
@@ -113,7 +113,7 @@ export const StudentManagement: React.FC = () => {
     try {
       setLoading(true);
       const API_URL =
-        import.meta.env.VITE_API_URL || "http://85.131.238.90:4000";
+        import.meta.env.VITE_API_URL || "http://103.179.45.68:4000";
       const token = getAuthToken();
 
       const response = await fetch(`${API_URL}/api/admin/users`, {
@@ -284,7 +284,7 @@ export const StudentManagement: React.FC = () => {
 
     try {
       const API_URL =
-        import.meta.env.VITE_API_URL || "http://85.131.238.90:4000";
+        import.meta.env.VITE_API_URL || "http://103.179.45.68:4000";
       const token = getAuthToken();
 
       // Get course dates
@@ -374,7 +374,7 @@ export const StudentManagement: React.FC = () => {
 
     try {
       const API_URL =
-        import.meta.env.VITE_API_URL || "http://85.131.238.90:4000";
+        import.meta.env.VITE_API_URL || "http://103.179.45.68:4000";
       const token = getAuthToken();
 
       if (type === "delete") {
@@ -470,7 +470,9 @@ export const StudentManagement: React.FC = () => {
       <div className="p-3 md:p-6">
         {/* Header */}
         <div className="mb-4 md:mb-6">
-          <h2 className="text-2xl md:text-3xl font-bold text-slate-800 mb-2">学生管理</h2>
+          <h2 className="text-2xl md:text-3xl font-bold text-slate-800 mb-2">
+            学生管理
+          </h2>
           <p className="text-sm md:text-base text-slate-600">
             登録されている学生の情報を管理できます
           </p>
@@ -562,7 +564,7 @@ export const StudentManagement: React.FC = () => {
                               student.avatar
                                 ? `${
                                     import.meta.env.VITE_API_URL ||
-                                    "http://85.131.238.90:4000"
+                                    "http://103.179.45.68:4000"
                                   }${student.avatar}`
                                 : "/img/default_avatar.png"
                             }
@@ -721,7 +723,7 @@ export const StudentManagement: React.FC = () => {
                         selectedStudent.avatar
                           ? `${
                               import.meta.env.VITE_API_URL ||
-                              "http://85.131.238.90:4000"
+                              "http://103.179.45.68:4000"
                             }${selectedStudent.avatar}`
                           : "/img/default_avatar.png"
                       }

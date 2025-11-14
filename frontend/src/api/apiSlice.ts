@@ -13,7 +13,7 @@ const getApiUrl = () => {
     import.meta.env.VITE_NODE_ENV === "production";
 
   if (isProduction) {
-    return "http://85.131.238.90:4000";
+    return "http://103.179.45.68:4000";
   } else {
     return "http://localhost:4000";
   }
@@ -34,6 +34,13 @@ export const apiSlice = createApi({
       return headers;
     },
   }),
-  tagTypes: ["Profile", "Auth", "Payment", "Students", "Notifications", "Certificate"],
+  tagTypes: [
+    "Profile",
+    "Auth",
+    "Payment",
+    "Students",
+    "Notifications",
+    "Certificate",
+  ],
   endpoints: () => ({}),
 });

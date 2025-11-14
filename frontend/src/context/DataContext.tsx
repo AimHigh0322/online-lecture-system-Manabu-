@@ -77,7 +77,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     try {
       const token = getAuthToken();
       const API_URL =
-        import.meta.env.VITE_API_URL || "http://85.131.238.90:4000";
+        import.meta.env.VITE_API_URL || "http://103.179.45.68:4000";
 
       // Fetch current user profile + all profiles + all users
       const profileResponse = await fetch(`${API_URL}/api/profile`, {

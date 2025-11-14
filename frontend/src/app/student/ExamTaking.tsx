@@ -54,14 +54,16 @@ export const ExamTaking: React.FC = () => {
   const navigateRef = useRef(navigate);
 
   // Check exam eligibility - prevent access if courses are not 100% complete
-  const {
-    data: eligibilityData,
-    isLoading: eligibilityLoading,
-  } = useGetExamEligibilityQuery({});
+  const { data: eligibilityData, isLoading: eligibilityLoading } =
+    useGetExamEligibilityQuery({});
 
   // Redirect to exam room if not eligible
   useEffect(() => {
-    if (!eligibilityLoading && eligibilityData && !eligibilityData.examEligible) {
+    if (
+      !eligibilityLoading &&
+      eligibilityData &&
+      !eligibilityData.examEligible
+    ) {
       navigate("/exam-room");
     }
   }, [eligibilityData, eligibilityLoading, navigate]);
@@ -122,7 +124,7 @@ export const ExamTaking: React.FC = () => {
   const fetchExamSettings = useCallback(async () => {
     try {
       const API_URL =
-        import.meta.env.VITE_API_URL || "http://85.131.238.90:4000";
+        import.meta.env.VITE_API_URL || "http://103.179.45.68:4000";
       const token = localStorage.getItem("authToken");
 
       const response = await fetch(`${API_URL}/api/exam/settings`, {
@@ -442,7 +444,7 @@ export const ExamTaking: React.FC = () => {
       // Send to backend
       const response = await fetch(
         `${
-          import.meta.env.VITE_API_URL || "http://85.131.238.90:4000"
+          import.meta.env.VITE_API_URL || "http://103.179.45.68:4000"
         }/api/exam/submit`,
         {
           method: "POST",

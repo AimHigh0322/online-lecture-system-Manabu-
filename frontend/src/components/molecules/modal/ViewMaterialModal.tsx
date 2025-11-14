@@ -111,7 +111,7 @@ export const ViewMaterialModal: React.FC<ViewMaterialModalProps> = ({
                     <source
                       src={`${
                         import.meta.env.VITE_API_URL ||
-                        "http://85.131.238.90:4000"
+                        "http://103.179.45.68:4000"
                       }${material.videoUrl || ""}`}
                       type="video/mp4"
                       onError={(e) => {
@@ -120,10 +120,9 @@ export const ViewMaterialModal: React.FC<ViewMaterialModalProps> = ({
                         console.error("Source URL that failed:", target.src);
 
                         // Test if the URL is accessible
-                        fetch(target.src, { method: "HEAD" })
-                          .catch((err) => {
-                            console.error("Video URL fetch error:", err);
-                          });
+                        fetch(target.src, { method: "HEAD" }).catch((err) => {
+                          console.error("Video URL fetch error:", err);
+                        });
                       }}
                     />
                     <p className="text-white p-4 text-center">
@@ -135,7 +134,7 @@ export const ViewMaterialModal: React.FC<ViewMaterialModalProps> = ({
                     className="w-full h-full bg-white"
                     src={`${
                       import.meta.env.VITE_API_URL ||
-                      "http://85.131.238.90:4000"
+                      "http://103.179.45.68:4000"
                     }${material.pdfUrl || ""}#toolbar=1&navpanes=0&scrollbar=1`}
                     title="PDF Viewer"
                   />

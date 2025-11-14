@@ -46,7 +46,7 @@ export const ExamManagement: React.FC = () => {
       setLoading(true);
       const response = await fetch(
         `${
-          import.meta.env.VITE_API_URL || "http://85.131.238.90:4000"
+          import.meta.env.VITE_API_URL || "http://103.179.45.68:4000"
         }/api/exam/admin/histories`,
         {
           headers: {
@@ -146,7 +146,10 @@ export const ExamManagement: React.FC = () => {
     });
   }, [filteredHistories, sortField, sortDirection]);
 
-  const totalPages = Math.max(1, Math.ceil(sortedHistories.length / itemsPerPage));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(sortedHistories.length / itemsPerPage)
+  );
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedHistories = useMemo(() => {
     return sortedHistories.slice(startIndex, startIndex + itemsPerPage);
@@ -180,7 +183,7 @@ export const ExamManagement: React.FC = () => {
     try {
       const response = await fetch(
         `${
-          import.meta.env.VITE_API_URL || "http://85.131.238.90:4000"
+          import.meta.env.VITE_API_URL || "http://103.179.45.68:4000"
         }/api/exam/admin/histories/${deleteConfirmId}`,
         {
           method: "DELETE",
@@ -209,7 +212,7 @@ export const ExamManagement: React.FC = () => {
     try {
       const response = await fetch(
         `${
-          import.meta.env.VITE_API_URL || "http://85.131.238.90:4000"
+          import.meta.env.VITE_API_URL || "http://103.179.45.68:4000"
         }/api/exam/admin/histories/${editingHistory._id}`,
         {
           method: "PUT",
@@ -267,7 +270,9 @@ export const ExamManagement: React.FC = () => {
         {/* Page Header */}
         <div className="mb-4 md:mb-6">
           <div>
-            <h1 className="text-xl md:text-2xl font-semibold text-gray-900">試験管理</h1>
+            <h1 className="text-xl md:text-2xl font-semibold text-gray-900">
+              試験管理
+            </h1>
             <p className="text-xs md:text-sm text-gray-600 mt-1">
               {examHistories.length} 件の試験履歴
             </p>
@@ -379,7 +384,8 @@ export const ExamManagement: React.FC = () => {
                           {history.examineeName}
                         </div>
                         <div className="text-xs text-gray-500 md:hidden mt-1">
-                          {history.score} / {history.totalQuestions} ({history.percentage}%)
+                          {history.score} / {history.totalQuestions} (
+                          {history.percentage}%)
                         </div>
                       </td>
                       <td className="px-2 md:px-6 py-3 md:py-4 whitespace-nowrap text-center hidden md:table-cell">

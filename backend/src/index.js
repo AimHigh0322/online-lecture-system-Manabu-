@@ -12,7 +12,7 @@ const isProduction = process.env.NODE_ENV === "production";
 // Build allowed origins list
 const allowedOrigins = [
   "http://localhost:5173",
-  "http://85.131.238.90:5173",
+  "http://103.179.45.68:5173",
   "http://manabou.co.jp:5173",
   "https://manabou.co.jp",
   "http://manabou.co.jp",

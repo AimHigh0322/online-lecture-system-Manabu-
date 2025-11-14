@@ -38,7 +38,7 @@ const getApiUrl = () => {
     import.meta.env.MODE === "production" ||
     import.meta.env.VITE_NODE_ENV === "production";
 
-  return isProduction ? "http://85.131.238.90:4000" : "http://localhost:4000";
+  return isProduction ? "http://103.179.45.68:4000" : "http://localhost:4000";
 };
 
 // Utility function to construct file URL
@@ -1035,10 +1035,10 @@ export const CourseLearning: React.FC = () => {
 
                 {/* Save Indicator - Shows when video ends - Modern inline banner */}
                 {videoEnded && (
-                  <div 
+                  <div
                     className="absolute bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-sm border-t border-slate-700 z-40"
                     style={{
-                      animation: "slideUp 0.3s ease-out"
+                      animation: "slideUp 0.3s ease-out",
                     }}
                   >
                     <div className="px-4 py-3 flex items-center justify-between">

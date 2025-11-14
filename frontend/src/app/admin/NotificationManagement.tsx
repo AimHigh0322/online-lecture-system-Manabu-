@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Send, Users, User, AlertCircle, Info, CheckCircle, AlertTriangle } from "lucide-react";
+import {
+  Send,
+  Users,
+  User,
+  AlertCircle,
+  Info,
+  CheckCircle,
+  AlertTriangle,
+} from "lucide-react";
 import { BossLayout } from "../../components/layout/AdminLayout";
 import {
   getStoredUser,
@@ -59,7 +67,7 @@ export const NotificationManagement: React.FC = () => {
       try {
         setLoading(true);
         const API_URL =
-          import.meta.env.VITE_API_URL || "http://85.131.238.90:4000";
+          import.meta.env.VITE_API_URL || "http://103.179.45.68:4000";
         const token = getAuthToken();
 
         const response = await fetch(`${API_URL}/api/admin/users`, {
@@ -72,9 +80,7 @@ export const NotificationManagement: React.FC = () => {
         if (response.ok) {
           const data = await response.json();
           const studentList =
-            data.data?.filter(
-              (user: any) => user.role === "student"
-            ) || [];
+            data.data?.filter((user: any) => user.role === "student") || [];
           setStudents(studentList);
         }
       } catch (error) {
@@ -243,7 +249,9 @@ export const NotificationManagement: React.FC = () => {
                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
                     required
                   >
-                    <option key="default" value="">選択してください</option>
+                    <option key="default" value="">
+                      選択してください
+                    </option>
                     {students.map((student) => (
                       <option key={student._id} value={student._id}>
                         {student.username} ({student.email})
@@ -260,21 +268,23 @@ export const NotificationManagement: React.FC = () => {
                 通知タイプ
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {(["info", "success", "warning", "error"] as const).map((type) => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, type })}
-                    className={`flex items-center justify-center space-x-2 px-3 md:px-4 py-2 md:py-3 rounded-lg border-2 transition-colors cursor-pointer text-xs md:text-sm ${
-                      formData.type === type
-                        ? "border-orange-500 bg-orange-50"
-                        : "border-slate-200 hover:border-slate-300"
-                    }`}
-                  >
-                    {getTypeIcon(type)}
-                    <span className="font-medium capitalize">{type}</span>
-                  </button>
-                ))}
+                {(["info", "success", "warning", "error"] as const).map(
+                  (type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, type })}
+                      className={`flex items-center justify-center space-x-2 px-3 md:px-4 py-2 md:py-3 rounded-lg border-2 transition-colors cursor-pointer text-xs md:text-sm ${
+                        formData.type === type
+                          ? "border-orange-500 bg-orange-50"
+                          : "border-slate-200 hover:border-slate-300"
+                      }`}
+                    >
+                      {getTypeIcon(type)}
+                      <span className="font-medium capitalize">{type}</span>
+                    </button>
+                  )
+                )}
               </div>
             </div>
 
@@ -344,4 +354,3 @@ export const NotificationManagement: React.FC = () => {
 };
 
 export default NotificationManagement;
-

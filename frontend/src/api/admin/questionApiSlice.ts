@@ -65,7 +65,7 @@ export const questionApiSlice = createApi({
   reducerPath: "questionApi",
   baseQuery: fetchBaseQuery({
     baseUrl: `${
-      import.meta.env.VITE_API_URL || "http://85.131.238.90:4000"
+      import.meta.env.VITE_API_URL || "http://103.179.45.68:4000"
     }/api/questions`,
     prepareHeaders: (headers) => {
       const token = localStorage.getItem("authToken");

@@ -109,7 +109,7 @@ export const MaterialManagement: React.FC = () => {
     try {
       setLoading(true);
       const API_URL =
-        import.meta.env.VITE_API_URL || "http://85.131.238.90:4000";
+        import.meta.env.VITE_API_URL || "http://103.179.45.68:4000";
       const token = localStorage.getItem("authToken");
 
       const response = await fetch(`${API_URL}/api/materials`, {
@@ -315,7 +315,7 @@ export const MaterialManagement: React.FC = () => {
 
     try {
       const API_URL =
-        import.meta.env.VITE_API_URL || "http://85.131.238.90:4000";
+        import.meta.env.VITE_API_URL || "http://103.179.45.68:4000";
       const token = localStorage.getItem("authToken");
 
       const response = await fetch(
@@ -526,7 +526,7 @@ export const MaterialManagement: React.FC = () => {
       }, 200);
 
       const API_URL =
-        import.meta.env.VITE_API_URL || "http://85.131.238.90:4000";
+        import.meta.env.VITE_API_URL || "http://103.179.45.68:4000";
       const endpoint =
         materialType === "video"
           ? `${API_URL}/api/materials/upload`
@@ -607,7 +607,7 @@ export const MaterialManagement: React.FC = () => {
 
     try {
       const API_URL =
-        import.meta.env.VITE_API_URL || "http://85.131.238.90:4000";
+        import.meta.env.VITE_API_URL || "http://103.179.45.68:4000";
       const token = localStorage.getItem("authToken");
 
       const response = await fetch(

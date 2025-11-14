@@ -116,20 +116,20 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       </div>
 
       {/* Content */}
-      <div className="relative z-10 min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8">
-        <div className="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          {/* Left Side - Welcome Content */}
-          <div className="text-white space-y-8">
+      <div className="relative z-10 min-h-screen flex items-center justify-center px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-8 md:py-12">
+        <div className="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8 lg:gap-12 items-center">
+          {/* Left Side - Welcome Content - Hidden on mobile, shown on tablet+ */}
+          <div className="hidden sm:block text-white space-y-4 sm:space-y-6 lg:space-y-8 order-2 lg:order-1">
             {/* Logo */}
-            <div className="mb-8">
-              <h1 className="text-2xl font-bold text-white">
+            <div className="mb-2 sm:mb-4 lg:mb-8">
+              <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white">
                 学ぼう国際研修センター
               </h1>
             </div>
 
             {/* Welcome Text - matching image style */}
-            <div className="space-y-6">
-              <h2 className="text-6xl font-bold leading-tight">
+            <div className="space-y-3 sm:space-y-4 lg:space-y-6">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold leading-tight">
                 <span className="block font-serif italic text-white">
                   ようこそ
                 </span>
@@ -138,26 +138,33 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 </span>
               </h2>
 
-              <p className="text-lg text-orange-100 leading-relaxed max-w-lg">
+              <p className="text-xs sm:text-sm md:text-base lg:text-lg text-orange-100 leading-relaxed max-w-lg">
                 日本語学習の新しい体験へようこそ。私たちのオンラインプラットフォームで、効果的で楽しい日本語学習を始めましょう。初心者から上級者まで、あなたのレベルに合わせた最適なコースをご提供します。
               </p>
             </div>
           </div>
 
           {/* Right Side - Login Form */}
-          <div className="flex justify-center lg:justify-end">
+          <div className="flex justify-center lg:justify-end order-1 lg:order-2 w-full">
             <div className="w-full max-w-md">
               {/* Login Form Panel - more like the image */}
-              <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-10">
-                <h3 className="text-2xl font-bold text-orange-600 mb-10 text-center uppercase tracking-wider">
+              <div className="bg-white/90 backdrop-blur-sm rounded-xl sm:rounded-2xl lg:rounded-3xl shadow-2xl p-4 sm:p-6 md:p-8 lg:p-10">
+                {/* Mobile-only header */}
+                <div className="sm:hidden mb-3 text-center">
+                  <h1 className="text-base font-bold text-white mb-1">
+                    学ぼう国際研修センター
+                  </h1>
+                </div>
+                
+                <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-orange-600 mb-4 sm:mb-6 md:mb-8 lg:mb-10 text-center uppercase tracking-wider">
                   ユーザーログイン
                 </h3>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 md:space-y-6">
                   {/* Email/ID Field */}
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <Mail className="h-5 w-5 text-orange-400" />
+                    <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none">
+                      <Mail className="h-4 w-4 sm:h-5 sm:w-5 text-orange-400" />
                     </div>
                     <input
                       id="id"
@@ -168,7 +175,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                       onChange={(e) =>
                         setFormData({ ...formData, id: e.target.value })
                       }
-                      className="block w-full pl-12 pr-4 py-4 border border-gray-300 rounded-xl placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors text-base"
+                      className="block w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3 md:py-4 border border-gray-300 rounded-lg placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors text-sm"
                       placeholder="メールアドレス または ID"
                       disabled={isLoading}
                     />
@@ -176,8 +183,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
                   {/* Password Field with Eye Icon */}
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <Lock className="h-5 w-5 text-orange-400" />
+                    <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none">
+                      <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-orange-400" />
                     </div>
                     <input
                       id="password"
@@ -188,25 +195,25 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                       onChange={(e) =>
                         setFormData({ ...formData, password: e.target.value })
                       }
-                      className="block w-full pl-12 pr-12 py-4 border border-gray-300 rounded-xl placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors text-base"
+                      className="block w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-2.5 sm:py-3 md:py-4 border border-gray-300 rounded-lg placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors text-sm"
                       placeholder="パスワード"
                       disabled={isLoading}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 pr-4 flex items-center cursor-pointer"
+                      className="absolute inset-y-0 right-0 pr-3 sm:pr-4 flex items-center cursor-pointer"
                     >
                       {showPassword ? (
-                        <EyeOff className="h-5 w-5 text-orange-400 hover:text-orange-500 cursor-pointer" />
+                        <EyeOff className="h-4 w-4 sm:h-5 sm:w-5 text-orange-400 hover:text-orange-500 cursor-pointer" />
                       ) : (
-                        <Eye className="h-5 w-5 text-orange-400 hover:text-orange-500 cursor-pointer" />
+                        <Eye className="h-4 w-4 sm:h-5 sm:w-5 text-orange-400 hover:text-orange-500 cursor-pointer" />
                       )}
                     </button>
                   </div>
 
                   {/* Options Row */}
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                     <label className="flex items-center cursor-pointer">
                       <input
                         type="checkbox"
@@ -214,7 +221,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                         onChange={(e) => setRememberMe(e.target.checked)}
                         className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded cursor-pointer"
                       />
-                      <span className="ml-2 text-sm text-orange-600">
+                      <span className="ml-2 text-xs sm:text-sm text-orange-600">
                         記憶する
                       </span>
                     </label>
@@ -224,7 +231,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                         type="checkbox"
                         className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded cursor-pointer"
                       />
-                      <span className="ml-2 text-sm text-orange-600">
+                      <span className="ml-2 text-xs sm:text-sm text-orange-600">
                         パスワードを忘れましたか？
                       </span>
                     </label>
@@ -241,7 +248,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white py-4 px-6 rounded-xl font-bold text-lg uppercase tracking-wider hover:from-orange-600 hover:to-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-all duration-200 shadow-lg"
+                    className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white py-2.5 sm:py-3 md:py-4 px-4 sm:px-6 rounded-lg font-bold text-sm sm:text-base md:text-lg uppercase tracking-wider hover:from-orange-600 hover:to-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-all duration-200 shadow-lg"
                   >
                     {isLoading ? "ログイン中..." : "ログイン"}
                   </button>
@@ -251,15 +258,15 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     type="button"
                     onClick={handleGoBack}
                     disabled={isLoading}
-                    className="w-full flex items-center justify-center gap-2 py-3 px-6 border-2 border-orange-500 text-orange-600 rounded-xl font-semibold hover:bg-orange-50 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-all duration-200"
+                    className="w-full flex items-center justify-center gap-2 py-2 sm:py-2.5 md:py-3 px-4 sm:px-6 border-2 border-orange-500 text-orange-600 rounded-lg font-semibold text-xs sm:text-sm md:text-base hover:bg-orange-50 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-all duration-200"
                   >
-                    <ArrowLeft className="h-4 w-4" />
+                    <ArrowLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     最初のページに戻る
                   </button>
 
                   {/* Register Link */}
-                  <div className="text-center pt-4">
-                    <p className="text-sm text-gray-600">
+                  <div className="text-center pt-2 sm:pt-3 md:pt-4">
+                    <p className="text-xs text-gray-600">
                       アカウントをお持ちでない方は{" "}
                       <button
                         type="button"

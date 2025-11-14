@@ -1,7 +1,20 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Youtube, ClipboardList, Cog, BookOpen, FilePlus, Bell, Award } from "lucide-react";
-import { getStoredUser, isAuthenticated, getAuthToken } from "../../api/auth/authService";
+import {
+  Users,
+  Youtube,
+  ClipboardList,
+  Cog,
+  BookOpen,
+  FilePlus,
+  Bell,
+  Award,
+} from "lucide-react";
+import {
+  getStoredUser,
+  isAuthenticated,
+  getAuthToken,
+} from "../../api/auth/authService";
 import type { User as AuthUser } from "../../api/auth/authService";
 import { BossLayout } from "../../components/layout/AdminLayout";
 
@@ -51,7 +64,8 @@ export const AdminDashboard: React.FC = () => {
   const fetchDashboardStats = async () => {
     try {
       setLoading(true);
-      const API_URL = import.meta.env.VITE_API_URL || "http://85.131.238.90:4000";
+      const API_URL =
+        import.meta.env.VITE_API_URL || "http://103.179.45.68:4000";
       const token = getAuthToken();
 
       // Fetch students count
@@ -61,7 +75,8 @@ export const AdminDashboard: React.FC = () => {
         },
       });
       const studentsData = await studentsRes.json();
-      const studentCount = studentsData.data?.filter((u: any) => u.role === "student").length || 0;
+      const studentCount =
+        studentsData.data?.filter((u: any) => u.role === "student").length || 0;
 
       // Fetch materials count
       const materialsRes = await fetch(`${API_URL}/api/materials`, {
@@ -89,14 +104,15 @@ export const AdminDashboard: React.FC = () => {
       });
       const examsData = await examsRes.json();
       const examCount = examsData.examHistories?.length || 0;
-      
+
       // Calculate recent exams (last 7 days)
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      const recentExamCount = examsData.examHistories?.filter((exam: any) => {
-        const examDate = new Date(exam.submittedAt);
-        return examDate >= sevenDaysAgo;
-      }).length || 0;
+      const recentExamCount =
+        examsData.examHistories?.filter((exam: any) => {
+          const examDate = new Date(exam.submittedAt);
+          return examDate >= sevenDaysAgo;
+        }).length || 0;
 
       setStats({
         totalStudents: studentCount,
@@ -205,8 +221,12 @@ export const AdminDashboard: React.FC = () => {
               <div className="flex items-center space-x-3">
                 <Users className="w-5 h-5 text-slate-600 flex-shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <h4 className="font-medium text-slate-800 text-sm">学生管理</h4>
-                  <p className="text-slate-500 text-xs mt-0.5">学生情報の管理</p>
+                  <h4 className="font-medium text-slate-800 text-sm">
+                    学生管理
+                  </h4>
+                  <p className="text-slate-500 text-xs mt-0.5">
+                    学生情報の管理
+                  </p>
                 </div>
               </div>
             </button>
@@ -218,7 +238,9 @@ export const AdminDashboard: React.FC = () => {
               <div className="flex items-center space-x-3">
                 <Youtube className="w-5 h-5 text-slate-600 flex-shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <h4 className="font-medium text-slate-800 text-sm">教材管理</h4>
+                  <h4 className="font-medium text-slate-800 text-sm">
+                    教材管理
+                  </h4>
                   <p className="text-slate-500 text-xs mt-0.5">教材の管理</p>
                 </div>
               </div>
@@ -231,7 +253,9 @@ export const AdminDashboard: React.FC = () => {
               <div className="flex items-center space-x-3">
                 <BookOpen className="w-5 h-5 text-slate-600 flex-shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <h4 className="font-medium text-slate-800 text-sm">試験問題管理</h4>
+                  <h4 className="font-medium text-slate-800 text-sm">
+                    試験問題管理
+                  </h4>
                   <p className="text-slate-500 text-xs mt-0.5">問題の管理</p>
                 </div>
               </div>
@@ -244,7 +268,9 @@ export const AdminDashboard: React.FC = () => {
               <div className="flex items-center space-x-3">
                 <FilePlus className="w-5 h-5 text-slate-600 flex-shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <h4 className="font-medium text-slate-800 text-sm">試験問題作成</h4>
+                  <h4 className="font-medium text-slate-800 text-sm">
+                    試験問題作成
+                  </h4>
                   <p className="text-slate-500 text-xs mt-0.5">新規作成</p>
                 </div>
               </div>
@@ -257,8 +283,12 @@ export const AdminDashboard: React.FC = () => {
               <div className="flex items-center space-x-3">
                 <ClipboardList className="w-5 h-5 text-slate-600 flex-shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <h4 className="font-medium text-slate-800 text-sm">試験管理</h4>
-                  <p className="text-slate-500 text-xs mt-0.5">試験履歴の管理</p>
+                  <h4 className="font-medium text-slate-800 text-sm">
+                    試験管理
+                  </h4>
+                  <p className="text-slate-500 text-xs mt-0.5">
+                    試験履歴の管理
+                  </p>
                 </div>
               </div>
             </button>
@@ -270,7 +300,9 @@ export const AdminDashboard: React.FC = () => {
               <div className="flex items-center space-x-3">
                 <Cog className="w-5 h-5 text-slate-600 flex-shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <h4 className="font-medium text-slate-800 text-sm">試験設定</h4>
+                  <h4 className="font-medium text-slate-800 text-sm">
+                    試験設定
+                  </h4>
                   <p className="text-slate-500 text-xs mt-0.5">基本設定</p>
                 </div>
               </div>
@@ -283,7 +315,9 @@ export const AdminDashboard: React.FC = () => {
               <div className="flex items-center space-x-3">
                 <Bell className="w-5 h-5 text-slate-600 flex-shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <h4 className="font-medium text-slate-800 text-sm">通知管理</h4>
+                  <h4 className="font-medium text-slate-800 text-sm">
+                    通知管理
+                  </h4>
                   <p className="text-slate-500 text-xs mt-0.5">通知送信</p>
                 </div>
               </div>
@@ -296,12 +330,13 @@ export const AdminDashboard: React.FC = () => {
               <div className="flex items-center space-x-3">
                 <Award className="w-5 h-5 text-slate-600 flex-shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <h4 className="font-medium text-slate-800 text-sm">修了証発行</h4>
+                  <h4 className="font-medium text-slate-800 text-sm">
+                    修了証発行
+                  </h4>
                   <p className="text-slate-500 text-xs mt-0.5">修了証の作成</p>
                 </div>
               </div>
             </button>
-
           </div>
         </div>
 
@@ -311,7 +346,8 @@ export const AdminDashboard: React.FC = () => {
             システムについて
           </h3>
           <p className="text-xs md:text-sm text-slate-600 leading-relaxed">
-            学ぼう国際研修センター オンライン講習システムの管理画面です。左側のメニューから各機能にアクセスできます。
+            学ぼう国際研修センター
+            オンライン講習システムの管理画面です。左側のメニューから各機能にアクセスできます。
           </p>
         </div>
       </div>

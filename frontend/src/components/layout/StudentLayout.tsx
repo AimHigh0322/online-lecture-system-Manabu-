@@ -59,7 +59,7 @@ export const StudentLayout: React.FC<StudentLayoutProps> = ({ children }) => {
         if (!token) return;
 
         const API_URL =
-          import.meta.env.VITE_API_URL || "http://85.131.238.90:4000";
+          import.meta.env.VITE_API_URL || "http://103.179.45.68:4000";
         const response = await fetch(`${API_URL}/api/profile`, {
           headers: {
             "Content-Type": "application/json",

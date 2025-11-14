@@ -113,7 +113,7 @@ export const ProfileManagement: React.FC = () => {
       setIsLoading(true);
       try {
         const API_URL =
-          import.meta.env.VITE_API_URL || "http://85.131.238.90:4000";
+          import.meta.env.VITE_API_URL || "http://103.179.45.68:4000";
         const token = getAuthToken();
 
         if (!token) {
@@ -182,7 +182,7 @@ export const ProfileManagement: React.FC = () => {
       return;
     }
 
-    const API_URL = import.meta.env.VITE_API_URL || "http://85.131.238.90:4000";
+    const API_URL = import.meta.env.VITE_API_URL || "http://103.179.45.68:4000";
     const token = getAuthToken();
 
     if (!token) {
@@ -585,7 +585,7 @@ export const ProfileManagement: React.FC = () => {
                             : profile?.avatar
                           : `${
                               import.meta.env.VITE_API_URL ||
-                              "http://85.131.238.90:4000"
+                              "http://103.179.45.68:4000"
                             }${
                               editing ? editedProfile?.avatar : profile?.avatar
                             }`

@@ -1,7 +1,7 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { getAuthToken } from "../auth/authService";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://85.131.238.90:4000";
+const API_URL = import.meta.env.VITE_API_URL || "http://103.179.45.68:4000";
 
 export const examApiSlice = createApi({
   reducerPath: "examApi",
