@@ -123,7 +123,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             {/* Logo */}
             <div className="mb-2 sm:mb-4 lg:mb-8">
               <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white">
-                学ぼう国際研修センター
+                学ぼう国際研修センター1111
               </h1>
             </div>
 
@@ -131,7 +131,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             <div className="space-y-3 sm:space-y-4 lg:space-y-6">
               <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold leading-tight">
                 <span className="block font-serif italic text-white">
-                  ようこそ
+                  ようこそsadasd
                 </span>
                 <span className="block font-bold text-white">
                   ウェブサイトへ
@@ -149,18 +149,28 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             <div className="w-full max-w-md">
               {/* Login Form Panel - more like the image */}
               <div className="bg-white/90 backdrop-blur-sm rounded-xl sm:rounded-2xl lg:rounded-3xl shadow-2xl p-4 sm:p-6 md:p-8 lg:p-10">
-                {/* Mobile-only header */}
-                <div className="sm:hidden mb-3 text-center">
-                  <h1 className="text-base font-bold text-white mb-1">
+                {/* Mobile-only welcome section inside card */}
+                <div className="sm:hidden mb-4 pb-4 border-b border-orange-200">
+                  <h1 className="text-base font-bold text-orange-600 mb-2 text-center">
                     学ぼう国際研修センター
                   </h1>
+                  <h2 className="text-xl font-bold text-orange-600 mb-2 text-center leading-tight">
+                    <span className="block font-serif italic">ようこそ</span>
+                    <span className="block">ウェブサイトへ</span>
+                  </h2>
+                  <p className="text-xs text-gray-600 text-center leading-relaxed">
+                    日本語学習の新しい体験へようこそ。私たちのオンラインプラットフォームで、効果的で楽しい日本語学習を始めましょう。
+                  </p>
                 </div>
-                
+
                 <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-orange-600 mb-4 sm:mb-6 md:mb-8 lg:mb-10 text-center uppercase tracking-wider">
                   ユーザーログイン
                 </h3>
 
-                <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 md:space-y-6">
+                <form
+                  onSubmit={handleSubmit}
+                  className="space-y-3 sm:space-y-4 md:space-y-6"
+                >
                   {/* Email/ID Field */}
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none">
